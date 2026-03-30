@@ -35,11 +35,10 @@ model Client {
 }
 
 model ServiceSession {
-  id            String   @id @default(cuid())
-  date          DateTime @default(now())
-  notes         String?
-  processingMin Int?
-  createdAt     DateTime @default(now())
+  id        String   @id @default(cuid())
+  date      DateTime @default(now())
+  notes     String?
+  createdAt DateTime @default(now())
 
   clientId String
   client   Client @relation(fields: [clientId], references: [id])
@@ -54,8 +53,12 @@ model ServiceSession {
 }
 
 model Formula {
-  id   String @id @default(cuid())
-  name String
+  id            String  @id @default(cuid())
+  name          String
+  developer     String?
+  ratio         String?
+  processingMin Int?
+  notes         String?
 
   sessionId String
   session   ServiceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
@@ -66,11 +69,10 @@ model Formula {
 }
 
 model FormulaComponent {
-  id        String  @id @default(cuid())
-  product   String
-  grams     Float
-  developer String?
-  ratio     String?
+  id      String @id @default(cuid())
+  product String
+  amount  Float
+  unit    String @default("oz")
 
   formulaId String
   formula   Formula @relation(fields: [formulaId], references: [id], onDelete: Cascade)

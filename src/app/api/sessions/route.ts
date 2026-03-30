@@ -9,7 +9,7 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
-  const { clientId, notes, processingMin, formulas } = body;
+  const { clientId, notes, formulas } = body;
 
   if (!clientId) {
     return NextResponse.json(
@@ -18,7 +18,6 @@ export async function POST(req: Request) {
     );
   }
 
-  // Verify client belongs to user
   const client = await prisma.client.findFirst({
     where: { id: clientId, userId: session.user.id },
   });
@@ -32,25 +31,30 @@ export async function POST(req: Request) {
       clientId,
       userId: session.user.id,
       notes: notes || null,
-      processingMin: processingMin || null,
       formulas: {
         create: (formulas ?? []).map(
           (f: {
             name: string;
+            developer: string | null;
+            ratio: string | null;
+            processingMin: number | null;
+            notes: string | null;
             components: {
               product: string;
-              grams: number;
-              developer: string | null;
-              ratio: string | null;
+              amount: number;
+              unit: string;
             }[];
           }) => ({
             name: f.name,
+            developer: f.developer,
+            ratio: f.ratio,
+            processingMin: f.processingMin,
+            notes: f.notes,
             components: {
               create: f.components.map((c) => ({
                 product: c.product,
-                grams: c.grams,
-                developer: c.developer,
-                ratio: c.ratio,
+                amount: c.amount,
+                unit: c.unit || "oz",
               })),
             },
           })
@@ -62,7 +66,6 @@ export async function POST(req: Request) {
     },
   });
 
-  // Update client's updatedAt
   await prisma.client.update({
     where: { id: clientId },
     data: { updatedAt: new Date() },

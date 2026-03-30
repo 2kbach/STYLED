@@ -4,25 +4,33 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PlusCircle, Trash2 } from "lucide-react";
 
-interface FormulaInput {
-  name: string;
-  components: {
-    product: string;
-    grams: string;
-    developer: string;
-    ratio: string;
-  }[];
+interface ComponentInput {
+  product: string;
+  amount: string;
+  unit: string;
 }
 
-const emptyComponent = () => ({
+interface FormulaInput {
+  name: string;
+  developer: string;
+  ratio: string;
+  processingMin: string;
+  notes: string;
+  components: ComponentInput[];
+}
+
+const emptyComponent = (): ComponentInput => ({
   product: "",
-  grams: "",
-  developer: "",
-  ratio: "",
+  amount: "",
+  unit: "oz",
 });
 
 const emptyFormula = (): FormulaInput => ({
   name: "",
+  developer: "",
+  ratio: "",
+  processingMin: "",
+  notes: "",
   components: [emptyComponent()],
 });
 
@@ -30,8 +38,7 @@ export function NewSessionForm({ clientId }: { clientId: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [formulas, setFormulas] = useState<FormulaInput[]>([emptyFormula()]);
-  const [notes, setNotes] = useState("");
-  const [processingMin, setProcessingMin] = useState("");
+  const [sessionNotes, setSessionNotes] = useState("");
 
   function addFormula() {
     setFormulas([...formulas, emptyFormula()]);
@@ -43,8 +50,8 @@ export function NewSessionForm({ clientId }: { clientId: string }) {
 
   function updateFormula(idx: number, field: keyof FormulaInput, value: string) {
     const updated = [...formulas];
-    if (field === "name") {
-      updated[idx].name = value;
+    if (field !== "components") {
+      updated[idx] = { ...updated[idx], [field]: value };
     }
     setFormulas(updated);
   }
@@ -70,8 +77,8 @@ export function NewSessionForm({ clientId }: { clientId: string }) {
     value: string
   ) {
     const updated = [...formulas];
-    const comp = updated[formulaIdx].components[compIdx];
-    (comp as Record<string, string>)[field] = value;
+    const comp = { ...updated[formulaIdx].components[compIdx], [field]: value };
+    updated[formulaIdx].components[compIdx] = comp;
     setFormulas(updated);
   }
 
@@ -84,19 +91,21 @@ export function NewSessionForm({ clientId }: { clientId: string }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         clientId,
-        notes: notes || null,
-        processingMin: processingMin ? parseInt(processingMin) : null,
+        notes: sessionNotes || null,
         formulas: formulas
           .filter((f) => f.name.trim())
           .map((f) => ({
             name: f.name.trim(),
+            developer: f.developer || null,
+            ratio: f.ratio || null,
+            processingMin: f.processingMin ? parseInt(f.processingMin) : null,
+            notes: f.notes || null,
             components: f.components
               .filter((c) => c.product.trim())
               .map((c) => ({
                 product: c.product.trim(),
-                grams: parseFloat(c.grams) || 0,
-                developer: c.developer || null,
-                ratio: c.ratio || null,
+                amount: parseFloat(c.amount) || 0,
+                unit: c.unit,
               })),
           })),
       }),
@@ -135,68 +144,80 @@ export function NewSessionForm({ clientId }: { clientId: string }) {
           <input
             value={formula.name}
             onChange={(e) => updateFormula(fi, "name", e.target.value)}
-            placeholder="Formula name (e.g., Root, Gloss, Toner)"
+            placeholder="Name (e.g., Base, Hairline, Toner)"
             className="touch-target w-full bg-background border border-border rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-accent"
           />
 
+          {/* Developer + Ratio row */}
+          <div className="flex gap-2">
+            <select
+              value={formula.developer}
+              onChange={(e) => updateFormula(fi, "developer", e.target.value)}
+              className="touch-target flex-1 bg-background border border-border rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-accent"
+            >
+              <option value="">Developer</option>
+              <option value="10V">10 Vol</option>
+              <option value="15V">15 Vol</option>
+              <option value="20V">20 Vol</option>
+              <option value="30V">30 Vol</option>
+              <option value="40V">40 Vol</option>
+            </select>
+            <select
+              value={formula.ratio}
+              onChange={(e) => updateFormula(fi, "ratio", e.target.value)}
+              className="touch-target w-28 bg-background border border-border rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-accent"
+            >
+              <option value="">Ratio</option>
+              <option value="1:1">1:1</option>
+              <option value="1:1.5">1:1.5</option>
+              <option value="1:2">1:2</option>
+            </select>
+          </div>
+
+          {/* Components */}
           {formula.components.map((comp, ci) => (
-            <div key={ci} className="space-y-2 pl-2 border-l-2 border-accent-light">
-              <div className="flex gap-2">
-                <input
-                  value={comp.product}
-                  onChange={(e) =>
-                    updateComponent(fi, ci, "product", e.target.value)
-                  }
-                  placeholder="Product"
-                  className="touch-target flex-1 bg-background border border-border rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-accent"
-                />
-                <input
-                  value={comp.grams}
-                  onChange={(e) =>
-                    updateComponent(fi, ci, "grams", e.target.value)
-                  }
-                  placeholder="g"
-                  type="number"
-                  step="0.1"
-                  className="touch-target w-20 bg-background border border-border rounded-xl px-3 py-3 text-base text-center focus:outline-none focus:ring-2 focus:ring-accent"
-                />
-                {formula.components.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeComponent(fi, ci)}
-                    className="text-red-500 p-2"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <select
-                  value={comp.developer}
-                  onChange={(e) =>
-                    updateComponent(fi, ci, "developer", e.target.value)
-                  }
-                  className="touch-target flex-1 bg-background border border-border rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-accent"
+            <div
+              key={ci}
+              className="flex gap-2 items-center pl-2 border-l-2 border-accent-light"
+            >
+              <input
+                value={comp.product}
+                onChange={(e) =>
+                  updateComponent(fi, ci, "product", e.target.value)
+                }
+                placeholder="Product (e.g., 6-1)"
+                className="touch-target flex-1 bg-background border border-border rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-accent"
+              />
+              <input
+                value={comp.amount}
+                onChange={(e) =>
+                  updateComponent(fi, ci, "amount", e.target.value)
+                }
+                placeholder="Amt"
+                type="number"
+                step="0.01"
+                className="touch-target w-20 bg-background border border-border rounded-xl px-3 py-3 text-base text-center focus:outline-none focus:ring-2 focus:ring-accent"
+              />
+              <select
+                value={comp.unit}
+                onChange={(e) =>
+                  updateComponent(fi, ci, "unit", e.target.value)
+                }
+                className="touch-target w-16 bg-background border border-border rounded-xl px-2 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              >
+                <option value="oz">oz</option>
+                <option value="g">g</option>
+                <option value="tube">tube</option>
+              </select>
+              {formula.components.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeComponent(fi, ci)}
+                  className="text-red-500 p-1"
                 >
-                  <option value="">Developer (optional)</option>
-                  <option value="10V">10 Volume (3%)</option>
-                  <option value="20V">20 Volume (6%)</option>
-                  <option value="30V">30 Volume (9%)</option>
-                  <option value="40V">40 Volume (12%)</option>
-                </select>
-                <select
-                  value={comp.ratio}
-                  onChange={(e) =>
-                    updateComponent(fi, ci, "ratio", e.target.value)
-                  }
-                  className="touch-target w-24 bg-background border border-border rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-accent"
-                >
-                  <option value="">Ratio</option>
-                  <option value="1:1">1:1</option>
-                  <option value="1:1.5">1:1.5</option>
-                  <option value="1:2">1:2</option>
-                </select>
-              </div>
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
           ))}
 
@@ -207,6 +228,29 @@ export function NewSessionForm({ clientId }: { clientId: string }) {
           >
             <PlusCircle className="w-4 h-4" /> Add component
           </button>
+
+          {/* Processing time + notes for this formula */}
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <input
+                value={formula.processingMin}
+                onChange={(e) =>
+                  updateFormula(fi, "processingMin", e.target.value)
+                }
+                type="number"
+                placeholder="Processing min"
+                className="touch-target w-full bg-background border border-border rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-accent"
+              />
+            </div>
+          </div>
+
+          <textarea
+            value={formula.notes}
+            onChange={(e) => updateFormula(fi, "notes", e.target.value)}
+            rows={2}
+            placeholder="Formula notes (optional)"
+            className="w-full bg-background border border-border rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-accent"
+          />
         </div>
       ))}
 
@@ -219,25 +263,12 @@ export function NewSessionForm({ clientId }: { clientId: string }) {
       </button>
 
       <div>
-        <label className="block text-sm font-medium mb-1">
-          Processing Time (minutes)
-        </label>
-        <input
-          value={processingMin}
-          onChange={(e) => setProcessingMin(e.target.value)}
-          type="number"
-          placeholder="Optional"
-          className="touch-target w-full bg-card border border-border rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-accent"
-        />
-      </div>
-
-      <div>
         <label className="block text-sm font-medium mb-1">Session Notes</label>
         <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
+          value={sessionNotes}
+          onChange={(e) => setSessionNotes(e.target.value)}
           rows={3}
-          placeholder="Notes about this session"
+          placeholder="Pre-treatment, prep steps, general notes..."
           className="w-full bg-card border border-border rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-accent"
         />
       </div>

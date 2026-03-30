@@ -10,18 +10,20 @@ interface SessionData {
   id: string;
   date: string;
   notes: string | null;
-  processingMin: number | null;
   clientId: string;
   client: { name: string };
   formulas: {
     id: string;
     name: string;
+    developer: string | null;
+    ratio: string | null;
+    processingMin: number | null;
+    notes: string | null;
     components: {
       id: string;
       product: string;
-      grams: number;
-      developer: string | null;
-      ratio: string | null;
+      amount: number;
+      unit: string;
     }[];
   }[];
   photos: {
@@ -94,48 +96,64 @@ export function SessionDetailClient({ session }: { session: SessionData }) {
           </button>
         )}
 
+        {/* Session notes (prep steps, etc.) */}
+        {session.notes && (
+          <div className="bg-card border border-border rounded-xl px-4 py-3">
+            <p className="text-sm text-muted mb-1">Session Notes</p>
+            <p className="whitespace-pre-line">{session.notes}</p>
+          </div>
+        )}
+
         {/* Formulas */}
         {session.formulas.map((formula) => (
           <div
             key={formula.id}
             className="bg-card border border-border rounded-xl p-4 space-y-3"
           >
-            <h3 className="font-semibold text-lg">{formula.name}</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-lg">{formula.name}</h3>
+              <div className="flex gap-2 text-sm">
+                {formula.developer && (
+                  <span className="bg-accent/10 text-accent px-2 py-0.5 rounded-full font-medium">
+                    {formula.developer}
+                  </span>
+                )}
+                {formula.ratio && (
+                  <span className="bg-muted/20 text-muted px-2 py-0.5 rounded-full">
+                    {formula.ratio}
+                  </span>
+                )}
+              </div>
+            </div>
+
             <div className="space-y-2">
               {formula.components.map((comp) => (
                 <div
                   key={comp.id}
                   className="flex items-center justify-between pl-3 border-l-2 border-accent-light py-1"
                 >
-                  <div>
-                    <p className="font-medium">{comp.product}</p>
-                    <div className="flex gap-3 text-sm text-muted">
-                      {comp.developer && <span>{comp.developer}</span>}
-                      {comp.ratio && <span>{comp.ratio}</span>}
-                    </div>
-                  </div>
+                  <p className="font-medium">{comp.product}</p>
                   <span className="font-mono text-lg font-semibold">
-                    {comp.grams}g
+                    {comp.amount} {comp.unit}
                   </span>
                 </div>
               ))}
             </div>
+
+            {(formula.processingMin || formula.notes) && (
+              <div className="pt-2 border-t border-border space-y-1">
+                {formula.processingMin && (
+                  <p className="text-sm text-muted">
+                    Processing: <span className="text-foreground font-medium">{formula.processingMin} min</span>
+                  </p>
+                )}
+                {formula.notes && (
+                  <p className="text-sm text-muted whitespace-pre-line">{formula.notes}</p>
+                )}
+              </div>
+            )}
           </div>
         ))}
-
-        {session.processingMin && (
-          <div className="bg-card border border-border rounded-xl px-4 py-3">
-            <span className="text-sm text-muted">Processing time:</span>{" "}
-            <span className="font-medium">{session.processingMin} min</span>
-          </div>
-        )}
-
-        {session.notes && (
-          <div className="bg-card border border-border rounded-xl px-4 py-3">
-            <p className="text-sm text-muted mb-1">Notes</p>
-            <p>{session.notes}</p>
-          </div>
-        )}
       </main>
     </div>
   );
