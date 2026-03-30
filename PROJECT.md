@@ -38,6 +38,7 @@ v0.2.0
 - **2026-03-29 18:30** ✅ Auth fully working after fixing all Vercel env var newlines — v0.1.2
 - **2026-03-29 19:00** ✅ Photo capture & gallery working — 3-angle protocol, Vercel Blob storage — v0.2.0
 - **2026-03-29 19:30** ✅ Schema restructured — developer/ratio/processing per formula, oz/g/tube units, Crazy Liana Grey seeded — v0.3.0
+- **2026-03-29 20:00** ✅ Session editing, repeat into edit mode, date picker, delete with confirm, cancel on new client — v0.3.4
 - **2026-03-29 20:00** ✅ Session editing — edit formulas, components, notes on any past session — v0.3.1
 
 ## Case Study
