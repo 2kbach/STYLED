@@ -1,11 +1,28 @@
 "use client";
 
-import { signIn } from "next-auth/react";
-
 export function SignInButton() {
+  async function handleSignIn() {
+    // Get CSRF token first, then POST to signin endpoint
+    const csrfRes = await fetch("/api/auth/csrf");
+    const { csrfToken } = await csrfRes.json();
+
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = "/api/auth/signin/google";
+
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = "csrfToken";
+    input.value = csrfToken;
+    form.appendChild(input);
+
+    document.body.appendChild(form);
+    form.submit();
+  }
+
   return (
     <button
-      onClick={() => signIn("google")}
+      onClick={handleSignIn}
       className="touch-target w-full flex items-center justify-center gap-3 bg-foreground text-background font-semibold rounded-xl px-6 py-4 text-lg hover:opacity-90 transition-opacity"
     >
       <svg className="w-5 h-5" viewBox="0 0 24 24">
