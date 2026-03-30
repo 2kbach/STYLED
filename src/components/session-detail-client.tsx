@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Camera, Pencil } from "lucide-react";
+import { ArrowLeft, Camera, Pencil, Copy } from "lucide-react";
 import { PhotoGallery } from "./photo-gallery";
 import { PhotoCapture } from "./photo-capture";
 import { EditSessionForm } from "./edit-session-form";
@@ -42,6 +42,20 @@ export function SessionDetailClient({ session }: { session: SessionData }) {
   const [photos, setPhotos] = useState(session.photos);
   const [showCapture, setShowCapture] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
+
+  async function handleDuplicate() {
+    setDuplicating(true);
+    const res = await fetch(`/api/sessions/${session.id}/duplicate`, {
+      method: "POST",
+    });
+    if (res.ok) {
+      const { id } = await res.json();
+      router.push(`/dashboard/sessions/${id}`);
+    } else {
+      setDuplicating(false);
+    }
+  }
 
   const refreshPhotos = useCallback(async () => {
     const res = await fetch(`/api/photos?sessionId=${session.id}`);
@@ -67,12 +81,21 @@ export function SessionDetailClient({ session }: { session: SessionData }) {
             <ArrowLeft className="w-4 h-4" /> {session.client.name}
           </Link>
           {!editing && (
-            <button
-              onClick={() => setEditing(true)}
-              className="inline-flex items-center gap-1 text-accent text-sm font-medium"
-            >
-              <Pencil className="w-4 h-4" /> Edit
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={handleDuplicate}
+                disabled={duplicating}
+                className="inline-flex items-center gap-1 text-accent text-sm font-medium disabled:opacity-50"
+              >
+                <Copy className="w-4 h-4" /> {duplicating ? "..." : "Repeat"}
+              </button>
+              <button
+                onClick={() => setEditing(true)}
+                className="inline-flex items-center gap-1 text-accent text-sm font-medium"
+              >
+                <Pencil className="w-4 h-4" /> Edit
+              </button>
+            </div>
           )}
         </div>
         <h1 className="text-xl font-bold mt-1">
