@@ -25,7 +25,7 @@ Stylists currently track formulas on paper cards or in their heads. This leads t
 - **Repo:** github.com/2kbach/STYLED
 
 ## Version
-v0.1.2
+v0.2.0
 
 ## Users
 - Megan (meg.homsey@gmail.com) — primary user, hairstylist
@@ -36,6 +36,7 @@ v0.1.2
 - **2026-03-29 17:30** ✅ Project initialized — Next.js, Turso DB, Prisma schema, core UI, deployed to Vercel
 - **2026-03-29 18:15** ✅ Google Sign-in working on styled.megandkev.co — v0.1.1
 - **2026-03-29 18:30** ✅ Auth fully working after fixing all Vercel env var newlines — v0.1.2
+- **2026-03-29 19:00** ✅ Photo capture & gallery working — 3-angle protocol, Vercel Blob storage — v0.2.0
 
 ## Case Study
 
