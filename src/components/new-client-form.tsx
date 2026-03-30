@@ -60,13 +60,22 @@ export function NewClientForm() {
           placeholder="Any notes about this client"
         />
       </div>
-      <button
-        type="submit"
-        disabled={loading}
-        className="touch-target w-full bg-accent text-white font-semibold rounded-xl px-6 py-4 text-lg hover:opacity-90 transition-opacity disabled:opacity-50"
-      >
-        {loading ? "Saving..." : "Add Client"}
-      </button>
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="touch-target flex-1 border border-border rounded-xl py-4 font-semibold text-muted hover:bg-card transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={loading}
+          className="touch-target flex-1 bg-accent text-white font-semibold rounded-xl py-4 hover:opacity-90 transition-opacity disabled:opacity-50"
+        >
+          {loading ? "Saving..." : "Add Client"}
+        </button>
+      </div>
     </form>
   );
 }
