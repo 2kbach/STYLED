@@ -31,6 +31,7 @@ Stylists currently track formulas on paper cards or in their heads. This leads t
 
 ## Changelog
 - **2026-03-29 17:30** ✅ Project initialized — Next.js, Turso DB, Prisma schema, core UI, deployed to Vercel
+- **2026-03-29 18:15** ✅ Google Sign-in working on styled.megandkev.co — v0.1.1
 
 ## Case Study
 
@@ -41,6 +42,10 @@ The brief emphasized "thumb zone" ergonomics (critical buttons in bottom third o
 Database schema uses an append-only pattern for service sessions — each visit creates a new immutable record with its formulas and components. This mirrors the brief's "git-style version control" requirement for formula tracking.
 
 Chose Turso (cloud SQLite) over Postgres for simplicity and edge performance. Prisma 7 as the ORM, which required adapting to its new configuration style (datasource URL in prisma.config.ts, not schema.prisma).
+
+**2026-03-29** — Hit a frustrating auth bug. Google kept returning "invalid_client" for every OAuth client we tried (even across different GCP projects). Turned out `echo` adds a trailing newline (`\n`) when piping values into `vercel env add`, so every Client ID had `%0A` appended. Invisible in dashboards, only visible in the Google redirect URL. Fix: use `printf` instead of `echo` for env vars. Lesson learned for all future Vercel env var setup.
+
+Also discovered NextAuth v5 beta has a known incompatibility with Next.js 16 — the `signIn()` server action throws `UnknownAction`. Workaround: POST a form with CSRF token to the route handler instead.
 
 ## Feature Parking Lot
 - **2026-03-29** — Before/after photo comparison sliders *(from brief)*

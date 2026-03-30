@@ -18,7 +18,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async signIn({ user }) {
       if (!user.email) return false;
-      // If ALLOWED_USERS is set, restrict sign-in
       if (allowedEmails.length > 0) {
         return allowedEmails.includes(user.email.toLowerCase());
       }
@@ -26,18 +25,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
     async jwt({ token, user }) {
       if (user?.email) {
-        // Upsert user in database on sign-in
-        const dbUser = await prisma.user.upsert({
-          where: { email: user.email },
-          update: { name: user.name, image: user.image },
-          create: {
-            email: user.email,
-            name: user.name,
-            image: user.image,
-            updatedAt: new Date(),
-          },
-        });
-        token.userId = dbUser.id;
+        try {
+          const dbUser = await prisma.user.upsert({
+            where: { email: user.email },
+            update: { name: user.name, image: user.image },
+            create: {
+              email: user.email,
+              name: user.name,
+              image: user.image,
+              updatedAt: new Date(),
+            },
+          });
+          token.userId = dbUser.id;
+        } catch (e) {
+          console.error("Failed to upsert user:", e);
+          token.userId = user.email;
+        }
       }
       return token;
     },
