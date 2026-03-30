@@ -22,6 +22,7 @@ interface FormulaInput {
 
 interface SessionData {
   id: string;
+  date: string;
   notes: string | null;
   formulas: {
     id: string;
@@ -66,14 +67,19 @@ export function EditSessionForm({
   session,
   onSave,
   onCancel,
+  onDelete,
 }: {
   session: SessionData;
   onSave: () => void;
   onCancel: () => void;
+  onDelete: () => void;
 }) {
   const initial = toFormData(session);
   const [formulas, setFormulas] = useState<FormulaInput[]>(initial.formulas);
   const [sessionNotes, setSessionNotes] = useState(initial.sessionNotes);
+  const [sessionDate, setSessionDate] = useState(
+    new Date(session.date).toISOString().split("T")[0]
+  );
   const [loading, setLoading] = useState(false);
 
   function addFormula() {
@@ -119,6 +125,7 @@ export function EditSessionForm({
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        date: sessionDate,
         notes: sessionNotes || null,
         formulas: formulas
           .filter((f) => f.name.trim())
@@ -148,6 +155,17 @@ export function EditSessionForm({
 
   return (
     <div className="space-y-6">
+      {/* Date picker */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Date of Service</label>
+        <input
+          type="date"
+          value={sessionDate}
+          onChange={(e) => setSessionDate(e.target.value)}
+          className="touch-target w-full bg-card border border-border rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-accent"
+        />
+      </div>
+
       {formulas.map((formula, fi) => (
         <div key={fi} className="bg-card border border-border rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
@@ -278,6 +296,14 @@ export function EditSessionForm({
           {loading ? "Saving..." : "Save Changes"}
         </button>
       </div>
+
+      {/* Delete session */}
+      <button
+        onClick={onDelete}
+        className="touch-target w-full text-red-500 font-medium text-sm py-3 hover:bg-red-500/10 rounded-xl transition-colors"
+      >
+        Delete this session
+      </button>
     </div>
   );
 }

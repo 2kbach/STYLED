@@ -37,11 +37,17 @@ interface SessionData {
   }[];
 }
 
-export function SessionDetailClient({ session }: { session: SessionData }) {
+export function SessionDetailClient({
+  session,
+  startEditing = false,
+}: {
+  session: SessionData;
+  startEditing?: boolean;
+}) {
   const router = useRouter();
   const [photos, setPhotos] = useState(session.photos);
   const [showCapture, setShowCapture] = useState(false);
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(startEditing);
   const [duplicating, setDuplicating] = useState(false);
 
   async function handleDuplicate() {
@@ -51,9 +57,22 @@ export function SessionDetailClient({ session }: { session: SessionData }) {
     });
     if (res.ok) {
       const { id } = await res.json();
-      router.push(`/dashboard/sessions/${id}`);
+      // Navigate to the new session with edit=true query param
+      router.push(`/dashboard/sessions/${id}?edit=1`);
     } else {
       setDuplicating(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!window.confirm("Delete this session? This cannot be undone.")) return;
+
+    const res = await fetch(`/api/sessions/${session.id}`, {
+      method: "DELETE",
+    });
+    if (res.ok) {
+      router.push(`/dashboard/clients/${session.clientId}`);
+      router.refresh();
     }
   }
 
@@ -145,6 +164,7 @@ export function SessionDetailClient({ session }: { session: SessionData }) {
             session={session}
             onSave={handleSaved}
             onCancel={() => setEditing(false)}
+            onDelete={handleDelete}
           />
         ) : (
           <>
