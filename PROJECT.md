@@ -37,6 +37,7 @@ v0.2.0
 - **2026-03-29 18:15** ✅ Google Sign-in working on styled.megandkev.co — v0.1.1
 - **2026-03-29 18:30** ✅ Auth fully working after fixing all Vercel env var newlines — v0.1.2
 - **2026-03-29 19:00** ✅ Photo capture & gallery working — 3-angle protocol, Vercel Blob storage — v0.2.0
+- **2026-03-29 19:30** ✅ Schema restructured — developer/ratio/processing per formula, oz/g/tube units, Crazy Liana Grey seeded — v0.3.0
 
 ## Case Study
 
