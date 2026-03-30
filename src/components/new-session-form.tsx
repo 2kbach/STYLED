@@ -112,8 +112,8 @@ export function NewSessionForm({ clientId }: { clientId: string }) {
     });
 
     if (res.ok) {
-      router.push(`/dashboard/clients/${clientId}`);
-      router.refresh();
+      const session = await res.json();
+      router.push(`/dashboard/sessions/${session.id}?photos=1`);
     } else {
       setLoading(false);
     }

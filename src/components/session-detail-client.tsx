@@ -40,13 +40,15 @@ interface SessionData {
 export function SessionDetailClient({
   session,
   startEditing = false,
+  startPhotos = false,
 }: {
   session: SessionData;
   startEditing?: boolean;
+  startPhotos?: boolean;
 }) {
   const router = useRouter();
   const [photos, setPhotos] = useState(session.photos);
-  const [showCapture, setShowCapture] = useState(false);
+  const [showCapture, setShowCapture] = useState(startPhotos);
   const [editing, setEditing] = useState(startEditing);
   const [duplicating, setDuplicating] = useState(false);
 
@@ -57,7 +59,6 @@ export function SessionDetailClient({
     });
     if (res.ok) {
       const { id } = await res.json();
-      // Navigate to the new session with edit=true query param
       router.push(`/dashboard/sessions/${id}?edit=1`);
     } else {
       setDuplicating(false);
@@ -127,38 +128,6 @@ export function SessionDetailClient({
       </header>
 
       <main className="flex-1 px-4 py-4 space-y-4">
-        {/* Photos section */}
-        {photos.length > 0 && !editing && <PhotoGallery photos={photos} />}
-
-        {!editing && (
-          showCapture ? (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-muted">Add Photos</h3>
-                <button
-                  onClick={() => setShowCapture(false)}
-                  className="text-sm text-accent"
-                >
-                  Done
-                </button>
-              </div>
-              <PhotoCapture
-                sessionId={session.id}
-                existingPhotos={photos}
-                onPhotoAdded={refreshPhotos}
-              />
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowCapture(true)}
-              className="touch-target w-full flex items-center justify-center gap-2 bg-accent/10 text-accent font-medium rounded-xl py-3 hover:bg-accent/20 transition-colors"
-            >
-              <Camera className="w-5 h-5" />
-              {photos.length > 0 ? "Add more photos" : "Add photos"}
-            </button>
-          )
-        )}
-
         {editing ? (
           <EditSessionForm
             session={session}
@@ -231,6 +200,36 @@ export function SessionDetailClient({
                 )}
               </div>
             ))}
+
+            {/* Photos — at the bottom */}
+            {photos.length > 0 && <PhotoGallery photos={photos} />}
+
+            {showCapture ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-muted">Add Photos</h3>
+                  <button
+                    onClick={() => setShowCapture(false)}
+                    className="text-sm text-accent"
+                  >
+                    Done
+                  </button>
+                </div>
+                <PhotoCapture
+                  sessionId={session.id}
+                  existingPhotos={photos}
+                  onPhotoAdded={refreshPhotos}
+                />
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowCapture(true)}
+                className="touch-target w-full flex items-center justify-center gap-2 bg-accent/10 text-accent font-medium rounded-xl py-3 hover:bg-accent/20 transition-colors"
+              >
+                <Camera className="w-5 h-5" />
+                {photos.length > 0 ? "Add more photos" : "Add photos"}
+              </button>
+            )}
           </>
         )}
       </main>

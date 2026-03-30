@@ -8,13 +8,13 @@ export default async function SessionDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ edit?: string }>;
+  searchParams: Promise<{ edit?: string; photos?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/");
 
   const { id } = await params;
-  const { edit } = await searchParams;
+  const { edit, photos } = await searchParams;
 
   const serviceSession = await prisma.serviceSession.findFirst({
     where: { id, userId: session.user.id },
@@ -35,6 +35,7 @@ export default async function SessionDetailPage({
     <SessionDetailClient
       session={JSON.parse(JSON.stringify(serviceSession))}
       startEditing={edit === "1"}
+      startPhotos={photos === "1"}
     />
   );
 }
