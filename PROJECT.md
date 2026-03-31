@@ -25,7 +25,7 @@ Stylists currently track formulas on paper cards or in their heads. This leads t
 - **Repo:** github.com/2kbach/STYLED
 
 ## Version
-v0.5.13
+v0.5.16
 
 ## Users
 - Megan (meg.homsey@gmail.com) — primary user, hairstylist
@@ -57,6 +57,9 @@ v0.5.13
 - **2026-03-31** ✅ Client profile stats: sessions count, avg revisit weeks, client since, service breakdown with counts — v0.5.13
 - **2026-03-31** ✅ Client since formatted as "Mar '26" style, matched to same large bold size as Sessions and Avg wks stats — v0.5.15
 - **2026-03-31** ✅ Nightly cron set on second Mac (2 AM, DAYS_BACK=14) for incremental daily scrapes
+- **2026-03-31** ✅ backfill-order-details.js: per-stylist service capture — scrapes each order detail page at human-like pace (30–40/hr), saves `StylistDetail: Service=Stylist | ...` and `OrderUUID: uuid` to session notes — v0.5.16 scraper feature
+- **2026-03-31** ✅ 50-order test backfill completed successfully on second Mac — 47/50 updated (3 not found in BLVD), multi-stylist orders (e.g. Highlights=Lien Scherr, Blow Dry=Carla Avedisian) captured correctly
+- **2026-03-31** ✅ Test Mode built and deployed — avatar menu toggle, amber TEST badge, isolated TestClient/TestServiceSession/TestFormula tables in Turso, 10 seeded fake clients with realistic sessions/formulas, read-only UI (no Edit/Repeat/Add Photos) — v0.5.16
 
 ## Case Study
 
@@ -91,6 +94,14 @@ Discovered gratuity can be calculated from existing data: `total − sum(service
 Then discovered 154 unique names instead of 156 — two clients (Taryn Shipley, Montana Marks) appeared twice across pages. One "Montana Marks" had a phone number and the other didn't, suggesting duplicate Boulevard accounts. Rather than auto-merging, decided to keep both and build a future "Review Duplicates" page where Meg can choose to merge or keep separate.
 
 Biggest optimization: found that Boulevard embeds client UUIDs in React's internal fiber tree as `props.key` on each table row component. Not visible in the DOM, but accessible via Playwright's `page.evaluate()` by walking `__reactFiber$` → `fiber.return` chain up ~14 levels. This eliminates the need to search each client name individually to get their UUID — cuts the name-to-URL resolution from ~10 minutes (154 individual searches) down to ~30 seconds (just scroll + read fiber).
+
+**2026-03-31** — Built `backfill-order-details.js` to capture per-stylist service assignments. Discovered that multi-stylist orders are common (e.g. Carol did Highlights while Carla did the Blow Dry on the same ticket). The top-level Boulevard appointment record only shows the primary stylist — to get per-service stylist data you have to click into the order detail page at `/sales/order/{uuid}`. The UUID is not the order number — it's a different identifier embedded in the URL.
+
+Biggest parsing challenge: the Boulevard order detail page renders each line item as a `<tr>` with the text "Mens Haircut with\nMeg Auerbach" — the `with` and stylist name split onto separate lines in the DOM but get joined when reading `row.innerText` with a space normalization. Final parser uses `rows.forEach(row => text.replace(/\s+/g, " ").trim())` and matches `/^(.+?) with (.+?)\s+\$(.+)/` for services and `/^Gratuity.*for (.+?)\s+\$(.+)/` for gratuity tips.
+
+Anti-bot: ran a 50-order test at 30/hr on the always-on Mac using a persistent logged-in browser session (not fresh login each run). At this rate and IP profile, detection risk is very low. Skips already-processed sessions via `StylistDetail:` marker in notes.
+
+Also built Test Mode this session — a fully isolated demo environment for portfolio screenshots. Uses three separate Turso tables (TestClient, TestServiceSession, TestFormula) seeded with 10 realistic fake clients and 40 sessions. A cookie-based toggle (`test_mode=1`) switches the entire dashboard to read from test data. The UI shows a small amber TEST badge and hides all write actions (no Edit, Repeat, Add Photos). The avatar menu is the toggle point — tap your profile photo → "Enter test mode" / "Exit test mode".
 
 ## Feature Parking Lot
 - **2026-03-29** — Before/after photo comparison sliders *(from brief)*
