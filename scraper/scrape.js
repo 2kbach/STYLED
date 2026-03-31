@@ -361,6 +361,19 @@ async function scrapeClient(page, clientUrl) {
   await page.locator('[role="tab"]:has-text("History")').click();
   await page.waitForTimeout(2000);
 
+  // Scroll down to ensure Order History table is loaded/visible
+  await page.evaluate(() => {
+    const panel = document.querySelector('[class*="Client Profile"]')?.closest('[class*="scroll"]')
+      || document.querySelector('[role="tab"][aria-selected="true"]')?.closest('[class*="scroll"]')
+      || document.querySelector('.client-profile')
+      || document.scrollingElement;
+    if (panel) {
+      panel.scrollTop = panel.scrollHeight;
+    }
+    window.scrollBy(0, 5000);
+  });
+  await page.waitForTimeout(1500);
+
   const historyData = await page.evaluate((providerName) => {
     const appointments = [];
     const orders = [];
