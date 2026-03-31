@@ -163,10 +163,15 @@ async function getFilteredClients(page) {
   // Step 5: Click the li[role="menuitem"] that contains the provider name
   console.log("   Step 5: Clicking provider checkbox...");
   await page.locator(`li[role="menuitem"]:has-text("${BLVD_PROVIDER.split(" ").pop()}")`).first().click({ timeout: 10000 });
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(1000);
 
-  // Step 6: Click Apply (should now be enabled)
-  console.log("   Step 6: Clicking Apply...");
+  // Step 6: Close the dropdown by pressing Escape
+  console.log("   Step 6: Closing dropdown...");
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(1000);
+
+  // Step 7: Click Apply (should now be enabled and not blocked)
+  console.log("   Step 7: Clicking Apply...");
   await page.locator('button:has-text("Apply"):not([disabled])').click({ timeout: 10000 });
   await page.waitForTimeout(3000);
 
