@@ -130,6 +130,17 @@ export async function POST(req: Request) {
         });
 
         if (existing) {
+          // Backfill gratuity into notes if missing
+          if (matchingOrder?.gratuity && existing.notes && !existing.notes.includes("Grat:")) {
+            const updatedNotes = existing.notes.replace(
+              /(Order #\d+ — Total: [^\n]+)/,
+              `$1 — Grat: $${matchingOrder.gratuity.toFixed(2)}`
+            );
+            await prisma.serviceSession.update({
+              where: { id: existing.id },
+              data: { notes: updatedNotes },
+            });
+          }
           skipped++;
           continue;
         }

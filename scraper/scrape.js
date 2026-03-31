@@ -18,6 +18,7 @@ const BLVD_PROVIDER = process.env.BLVD_PROVIDER || "Meg Auerbach";
 const STYLED_API_URL = process.env.STYLED_API_URL || "https://styled.megandkev.co";
 const STYLED_SCRAPER_KEY = process.env.STYLED_SCRAPER_KEY;
 const DRY_RUN = process.env.DRY_RUN === "true";
+const DAYS_BACK = process.env.DAYS_BACK ? parseInt(process.env.DAYS_BACK) : null;
 const DATA_FILE = "scraped-data.json";
 
 if (!BLVD_EMAIL || !BLVD_PASSWORD) {
@@ -439,9 +440,10 @@ async function scrapeClient(page, clientUrl) {
   });
   await page.waitForTimeout(1500);
 
-  const historyData = await page.evaluate((providerName) => {
+  const historyData = await page.evaluate(({ providerName, daysBack }) => {
     const appointments = [];
     const orders = [];
+    const cutoff = daysBack ? new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000) : null;
 
     // Find the Appointment History table (has headers: Date, Location, Services, Staff, Status)
     const tables = document.querySelectorAll("table");
@@ -469,8 +471,10 @@ async function scrapeClient(page, clientUrl) {
         const staffName = staffAvatar?.getAttribute("aria-label") || "";
         const staffInitials = staffAvatar?.getAttribute("initials") || cells[3]?.textContent?.trim() || "";
 
+        const dateStr = cells[0]?.textContent?.trim() || "";
+        if (cutoff && new Date(dateStr) < cutoff) return;
         appointments.push({
-          date: cells[0]?.textContent?.trim() || "",
+          date: dateStr,
           location: cells[1]?.textContent?.trim() || "",
           services: cells[2]?.textContent?.trim() || "",
           staff: staffName || staffInitials,
@@ -487,20 +491,22 @@ async function scrapeClient(page, clientUrl) {
         const cells = row.querySelectorAll("td");
         if (cells.length < 5) return;
 
+        const orderDateStr = cells[0]?.textContent?.trim() || "";
+        if (cutoff && new Date(orderDateStr) < cutoff) return;
         orders.push({
-          date: cells[0]?.textContent?.trim() || "",
+          date: orderDateStr,
           location: cells[1]?.textContent?.trim() || "",
           orderNumber: cells[2]?.textContent?.trim() || "",
           totalSaleText: cells[3]?.textContent?.trim() || "",
           status: cells[4]?.textContent?.trim() || "",
           refundAmount: cells[5]?.textContent?.trim() || "",
-          orderUrl: null, // Orders use ng-click, no direct URL
+          orderUrl: null,
         });
       });
     }
 
     return { appointments, orders };
-  }, BLVD_PROVIDER);
+  }, { providerName: BLVD_PROVIDER, daysBack: DAYS_BACK });
 
   // Click through each order to get gratuity
   const gratuities = [];
