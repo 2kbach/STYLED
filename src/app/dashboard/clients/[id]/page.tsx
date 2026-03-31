@@ -1,6 +1,8 @@
 import { auth } from "@/auth";
 import { redirect, notFound } from "next/navigation";
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
+import { turso } from "@/lib/turso";
 import Link from "next/link";
 import { PlusCircle, ChevronRight, ArrowLeft, Scissors, FlaskConical, FileStack, Wand2 } from "lucide-react";
 
@@ -21,27 +23,57 @@ export default async function ClientDetailPage({
   if (!session?.user?.id) redirect("/");
 
   const { id } = await params;
+  const cookieStore = await cookies();
+  const isTestMode = cookieStore.get("test_mode")?.value === "1";
 
-  const client = await prisma.client.findFirst({
-    where: { id, userId: session.user.id },
-    include: {
-      sessions: {
-        orderBy: { date: "desc" },
-        include: {
-          formulas: {
-            include: { components: true },
-          },
-        },
-      },
-    },
-  });
+  // ── Fetch client + sessions ────────────────────────────────────────────────
+  let client: { id: string; name: string; phone: string | null; email: string | null } | null = null;
+  let sessions: Array<{
+    id: string;
+    date: Date;
+    notes: string | null;
+    formulas: Array<{ id: string; name: string; notes: string | null }>;
+  }> = [];
 
-  if (!client) notFound();
+  if (isTestMode) {
+    const clientRow = await turso.execute({ sql: "SELECT * FROM TestClient WHERE id = ?", args: [id] });
+    if (!clientRow.rows.length) notFound();
+    const r = clientRow.rows[0];
+    client = { id: r.id as string, name: r.name as string, phone: r.phone as string | null, email: r.email as string | null };
 
-  const sessions = client.sessions;
+    const sessRows = await turso.execute({
+      sql: "SELECT * FROM TestServiceSession WHERE clientId = ? ORDER BY date DESC",
+      args: [id],
+    });
+    sessions = await Promise.all(
+      sessRows.rows.map(async (s) => {
+        const fRows = await turso.execute({ sql: "SELECT * FROM TestFormula WHERE sessionId = ?", args: [s.id as string] });
+        return {
+          id: s.id as string,
+          date: new Date(s.date as string),
+          notes: s.notes as string | null,
+          formulas: fRows.rows.map((f) => ({ id: f.id as string, name: f.name as string, notes: f.notes as string | null })),
+        };
+      })
+    );
+  } else {
+    const raw = await prisma.client.findFirst({
+      where: { id, userId: session.user.id },
+      include: { sessions: { orderBy: { date: "desc" }, include: { formulas: { include: { components: true } } } } },
+    });
+    if (!raw) notFound();
+    client = { id: raw.id, name: raw.name, phone: raw.phone, email: raw.email };
+    sessions = raw.sessions.map((s) => ({
+      id: s.id,
+      date: s.date,
+      notes: s.notes,
+      formulas: s.formulas.map((f) => ({ id: f.id, name: f.name, notes: f.notes })),
+    }));
+  }
+
+  // ── Stats ──────────────────────────────────────────────────────────────────
   const totalSessions = sessions.length;
 
-  // Client since — oldest session
   const clientSince = sessions.length > 0
     ? (() => {
         const d = new Date(sessions[sessions.length - 1].date);
@@ -51,7 +83,6 @@ export default async function ClientDetailPage({
       })()
     : null;
 
-  // Avg revisit in weeks
   let avgRevisitWeeks: number | null = null;
   if (sessions.length >= 2) {
     const sorted = [...sessions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -63,7 +94,6 @@ export default async function ClientDetailPage({
     avgRevisitWeeks = Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length * 10) / 10;
   }
 
-  // Service counts
   const serviceCounts: Record<string, number> = {};
   for (const s of sessions) {
     for (const f of s.formulas) {
@@ -71,29 +101,21 @@ export default async function ClientDetailPage({
       if (name) serviceCounts[name] = (serviceCounts[name] || 0) + 1;
     }
   }
-  const topServices = Object.entries(serviceCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 8);
+  const topServices = Object.entries(serviceCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
 
   return (
     <div className="flex-1 flex flex-col pb-20">
       <header className="px-4 py-3 border-b border-border bg-card">
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-1 text-accent text-sm mb-1"
-        >
+        <Link href="/dashboard" className="inline-flex items-center gap-1 text-accent text-sm mb-1">
           <ArrowLeft className="w-4 h-4" /> Back
         </Link>
         <h1 className="text-xl font-bold">{client.name}</h1>
-        {client.phone && (
-          <p className="text-sm text-muted">{client.phone}</p>
-        )}
+        {client.phone && <p className="text-sm text-muted">{client.phone}</p>}
       </header>
 
       <main className="flex-1 px-4 py-4 space-y-4">
         {totalSessions > 0 && (
           <div className="space-y-3">
-            {/* Top stats */}
             <div className="grid grid-cols-3 gap-2">
               <div className="bg-card border border-border rounded-xl px-3 py-3 text-center">
                 <p className="text-2xl font-bold">{totalSessions}</p>
@@ -108,8 +130,6 @@ export default async function ClientDetailPage({
                 <p className="text-xs text-muted mt-0.5">Client since</p>
               </div>
             </div>
-
-            {/* Service breakdown */}
             {topServices.length > 0 && (
               <div className="bg-card border border-border rounded-xl px-4 py-3">
                 <p className="text-sm text-muted mb-2">Services</p>
@@ -128,29 +148,25 @@ export default async function ClientDetailPage({
 
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Sessions</h2>
-          <Link
-            href={`/dashboard/clients/${client.id}/new-session`}
-            className="touch-target inline-flex items-center gap-1 text-accent font-medium text-sm"
-          >
-            <PlusCircle className="w-4 h-4" />
-            New Session
-          </Link>
+          {!isTestMode && (
+            <Link href={`/dashboard/clients/${client.id}/new-session`} className="touch-target inline-flex items-center gap-1 text-accent font-medium text-sm">
+              <PlusCircle className="w-4 h-4" /> New Session
+            </Link>
+          )}
         </div>
 
-        {client.sessions.length === 0 ? (
+        {sessions.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted mb-4">No sessions yet</p>
-            <Link
-              href={`/dashboard/clients/${client.id}/new-session`}
-              className="touch-target inline-flex items-center gap-2 bg-accent text-white font-semibold rounded-xl px-6 py-4 text-lg hover:opacity-90 transition-opacity"
-            >
-              <PlusCircle className="w-5 h-5" />
-              Start first session
-            </Link>
+            {!isTestMode && (
+              <Link href={`/dashboard/clients/${client.id}/new-session`} className="touch-target inline-flex items-center gap-2 bg-accent text-white font-semibold rounded-xl px-6 py-4 text-lg hover:opacity-90 transition-opacity">
+                <PlusCircle className="w-5 h-5" /> Start first session
+              </Link>
+            )}
           </div>
         ) : (
           <div className="divide-y divide-border border border-border rounded-xl overflow-hidden bg-card">
-            {client.sessions.map((s) => {
+            {sessions.map((s) => {
               const formulaNames = s.formulas.map((f) => f.name);
               const Icon = getSessionIcon(formulaNames);
               const stylistLine = s.notes?.split("\n").find((l) => l.startsWith("Stylist: "));
@@ -160,7 +176,7 @@ export default async function ClientDetailPage({
               return (
                 <Link
                   key={s.id}
-                  href={`/dashboard/sessions/${s.id}`}
+                  href={`/dashboard/sessions/${s.id}${isTestMode ? "?test=1" : ""}`}
                   className="touch-target flex items-center gap-3 px-4 py-3 hover:bg-muted/10 transition-colors"
                 >
                   <div className="shrink-0 w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center">
@@ -168,16 +184,10 @@ export default async function ClientDetailPage({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium">
-                      {new Date(s.date).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
+                      {new Date(s.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     </p>
                     {formulaNames.length > 0 && (
-                      <p className="text-xs text-muted truncate">
-                        {formulaNames.join(" · ")}
-                      </p>
+                      <p className="text-xs text-muted truncate">{formulaNames.join(" · ")}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">

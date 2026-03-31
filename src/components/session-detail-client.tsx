@@ -41,10 +41,12 @@ export function SessionDetailClient({
   session,
   startEditing = false,
   startPhotos = false,
+  isTestMode = false,
 }: {
   session: SessionData;
   startEditing?: boolean;
   startPhotos?: boolean;
+  isTestMode?: boolean;
 }) {
   const router = useRouter();
   const [photos, setPhotos] = useState(session.photos);
@@ -100,7 +102,7 @@ export function SessionDetailClient({
           >
             <ArrowLeft className="w-4 h-4" /> {session.client.name}
           </Link>
-          {!editing && (
+          {!editing && !isTestMode && (
             <div className="flex gap-3">
               <button
                 onClick={handleDuplicate}

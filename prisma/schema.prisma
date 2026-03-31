@@ -83,6 +83,49 @@ model FormulaComponent {
   @@index([formulaId])
 }
 
+// ─── Test Mode Tables ────────────────────────────────────────────────────────
+
+model TestClient {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  sessions TestServiceSession[]
+}
+
+model TestServiceSession {
+  id        String   @id @default(cuid())
+  date      DateTime @default(now())
+  notes     String?
+  createdAt DateTime @default(now())
+
+  clientId String
+  client   TestClient @relation(fields: [clientId], references: [id])
+
+  formulas TestFormula[]
+
+  @@index([clientId])
+}
+
+model TestFormula {
+  id            String  @id @default(cuid())
+  name          String
+  developer     String?
+  ratio         String?
+  processingMin Int?
+  notes         String?
+
+  sessionId String
+  session   TestServiceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 model Photo {
   id        String   @id @default(cuid())
   url       String

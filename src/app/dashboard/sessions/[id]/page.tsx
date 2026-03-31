@@ -28,6 +28,18 @@ export default async function SessionDetailPage({
 
     const fRows = await turso.execute({ sql: "SELECT * FROM TestFormula WHERE sessionId = ?", args: [id] });
 
+    const formulaIds = fRows.rows.map(f => f.id as string);
+    let compsByFormula: Record<string, { id: string; product: string; amount: number; unit: string }[]> = {};
+    if (formulaIds.length > 0) {
+      const placeholders = formulaIds.map(() => "?").join(",");
+      const cRows = await turso.execute({ sql: `SELECT * FROM TestFormulaComponent WHERE formulaId IN (${placeholders})`, args: formulaIds });
+      for (const c of cRows.rows) {
+        const fid = c.formulaId as string;
+        if (!compsByFormula[fid]) compsByFormula[fid] = [];
+        compsByFormula[fid].push({ id: c.id as string, product: c.product as string, amount: c.amount as number, unit: c.unit as string });
+      }
+    }
+
     const serviceSession = {
       id: s.id as string,
       date: new Date(s.date as string).toISOString(),
@@ -39,7 +51,7 @@ export default async function SessionDetailPage({
       formulas: fRows.rows.map((f) => ({
         id: f.id as string, name: f.name as string, developer: f.developer as string | null, ratio: f.ratio as string | null,
         processingMin: f.processingMin as number | null, notes: f.notes as string | null, sessionId: f.sessionId as string,
-        components: [],
+        components: compsByFormula[f.id as string] ?? [],
       })),
       photos: [],
     };
