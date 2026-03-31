@@ -104,7 +104,7 @@ export default async function ClientDetailPage({
                 <p className="text-xs text-muted mt-0.5">Avg. wks</p>
               </div>
               <div className="bg-card border border-border rounded-xl px-3 py-3 text-center">
-                <p className="text-sm font-bold leading-tight mt-1">{clientSince ?? "—"}</p>
+                <p className="text-2xl font-bold">{clientSince ?? "—"}</p>
                 <p className="text-xs text-muted mt-0.5">Client since</p>
               </div>
             </div>
