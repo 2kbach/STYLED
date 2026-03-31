@@ -18,6 +18,7 @@ interface BlvdOrder {
   totalSaleText: string;
   totalSale: number;
   status: string;
+  gratuity: number | null;
 }
 
 interface BlvdClient {
@@ -67,22 +68,41 @@ export async function POST(req: Request) {
         blvdClient.name ||
         "Unknown";
 
-      // Upsert client
-      let client = await prisma.client.findFirst({
-        where: { userId: targetUserId, name: clientName },
-      });
+      // Upsert client — match by blvdId first, then by name
+      let client = blvdClient.blvdId
+        ? await prisma.client.findFirst({
+            where: { userId: targetUserId, blvdId: blvdClient.blvdId },
+          })
+        : null;
 
       if (!client) {
+        client = await prisma.client.findFirst({
+          where: { userId: targetUserId, name: clientName },
+        });
+      }
+
+      if (client) {
+        // Update existing client with any new data
+        // Only update name if new name has more info (e.g., full name vs last-name-only)
+        const shouldUpdateName = clientName.includes(" ") && !client.name.includes(" ");
+        client = await prisma.client.update({
+          where: { id: client.id },
+          data: {
+            name: shouldUpdateName ? clientName : client.name,
+            phone: blvdClient.phone || client.phone,
+            email: blvdClient.email || client.email,
+            blvdId: blvdClient.blvdId || client.blvdId,
+            updatedAt: new Date(),
+          },
+        });
+      } else {
         client = await prisma.client.create({
           data: {
             name: clientName,
             phone: blvdClient.phone || null,
-            notes: [
-              blvdClient.email ? `Email: ${blvdClient.email}` : null,
-              `Boulevard ID: ${blvdClient.blvdId}`,
-            ]
-              .filter(Boolean)
-              .join("\n"),
+            email: blvdClient.email || null,
+            blvdId: blvdClient.blvdId || null,
+            notes: null,
             userId: targetUserId,
             updatedAt: new Date(),
           },
@@ -136,7 +156,9 @@ export async function POST(req: Request) {
         const sessionNotes = [
           appt.staff ? `Stylist: ${appt.staff}` : null,
           appt.isProvider ? null : `(Not Meg's appointment)`,
-          matchingOrder ? `Order #${matchingOrder.orderNumber} — Total: ${matchingOrder.totalSaleText}` : null,
+          matchingOrder
+            ? `Order #${matchingOrder.orderNumber} — Total: ${matchingOrder.totalSaleText}${matchingOrder.gratuity ? ` — Grat: $${matchingOrder.gratuity.toFixed(2)}` : ""}`
+            : null,
           `Imported from Boulevard`,
         ]
           .filter(Boolean)

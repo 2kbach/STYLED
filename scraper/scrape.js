@@ -198,99 +198,157 @@ async function getFilteredClients(page) {
     console.log(`   ✅ Filter shows: ${countMatch[0]}`);
   }
 
-  // Collect client names from the filtered table rows, then search each one
-  // We can't click rows (filter resets when panel closes)
-  // Instead: scrape names from table, then use search to find each client's UUID
-  const clientNames = [];
+  // Collect clients (name + UUID) from ALL pages of the filtered table
+  // Boulevard uses MUI TablePagination: "Rows per page: 50 | 1-50 of 156 | < >"
+  // UUIDs are embedded in React fiber props.key on each table row — no need to
+  // search each client individually (saves ~10 min)
+  const clientEntries = [];
+  let currentPage = 1;
 
-  // Scroll and collect all visible client names
-  let previousCount = 0;
-  let staleRounds = 0;
+  while (true) {
+    // Scroll through current page to collect all visible rows
+    let previousCount = 0;
+    let staleRounds = 0;
 
-  while (staleRounds < 3) {
-    const names = await page.evaluate(() => {
-      const rows = document.querySelectorAll("tr.MuiTableRow-hover");
-      return [...rows].map((row) => {
-        const cells = row.querySelectorAll("td");
-        const nameCell = cells[0]?.textContent?.trim().replace(/^[A-Z]/, (m) => m) || "";
-        // Name has a leading letter avatar (e.g., "C" before "Chris Cooper")
-        // The actual name starts after the single initial letter
-        const name = nameCell.replace(/^[A-Z](?=[A-Z])/, "").trim();
-        const phone = cells[2]?.textContent?.trim() || "";
-        const email = cells[3]?.textContent?.trim() || "";
-        return { name, phone, email };
-      });
-    });
+    while (staleRounds < 3) {
+      const rows = await page.evaluate(() => {
+        const rows = document.querySelectorAll("tr.MuiTableRow-hover");
+        return [...rows].map((row) => {
+          const cells = row.querySelectorAll("td");
+          const nameCell = cells[0]?.textContent?.trim().replace(/^[A-Z]/, (m) => m) || "";
+          const name = nameCell.replace(/^[A-Z](?=[A-Z])/, "").trim();
+          const phone = cells[2]?.textContent?.trim() || "";
+          const email = cells[3]?.textContent?.trim() || "";
 
-    // Deduplicate by name
-    for (const n of names) {
-      if (n.name && !clientNames.find((c) => c.name === n.name)) {
-        clientNames.push(n);
-      }
-    }
+          // Extract UUID from React fiber props.key
+          let uuid = null;
+          const fiberKey = Object.keys(row).find((k) => k.startsWith("__reactFiber$"));
+          if (fiberKey) {
+            let fiber = row[fiberKey];
+            for (let i = 0; i < 20; i++) {
+              if (!fiber) break;
+              try {
+                const key = fiber.memoizedProps?.key;
+                if (typeof key === "string" && key.match(/^[a-f0-9]{8}-[a-f0-9]{4}-/)) {
+                  uuid = key;
+                  break;
+                }
+              } catch (e) {}
+              fiber = fiber.return;
+            }
+          }
 
-    if (clientNames.length === previousCount) {
-      staleRounds++;
-    } else {
-      staleRounds = 0;
-    }
-    previousCount = clientNames.length;
-
-    // Scroll down for more
-    await page.evaluate(() => {
-      const container =
-        document.querySelector("table")?.closest('[class*="scroll"]') ||
-        document.querySelector("table")?.parentElement?.parentElement;
-      if (container) container.scrollTop += 800;
-      else window.scrollBy(0, 800);
-    });
-    await page.waitForTimeout(1500);
-  }
-
-  console.log(`   ✅ Collected ${clientNames.length} client names from table`);
-
-  // Now find each client's UUID by searching for them individually
-  const clientLinks = [];
-  for (let i = 0; i < clientNames.length; i++) {
-    const { name, phone, email } = clientNames[i];
-    console.log(`   🔍 [${i + 1}/${clientNames.length}] Looking up: ${name}`);
-
-    // Navigate to clients page and search
-    try {
-      await page.goto("https://dashboard.boulevard.io/clients", { timeout: 30000, waitUntil: "domcontentloaded" });
-    } catch {
-      // Retry once
-      await page.goto("https://dashboard.boulevard.io/clients", { timeout: 30000, waitUntil: "domcontentloaded" });
-    }
-    await page.waitForTimeout(2000);
-
-    // Use the search bar
-    const searchInput = page.locator('input[placeholder*="Search for a name"]');
-    await searchInput.fill(name);
-    await page.waitForTimeout(2000);
-
-    // Click the first matching row
-    const firstRow = page.locator("tr.MuiTableRow-hover").first();
-    const rowExists = await firstRow.count();
-    if (rowExists > 0) {
-      await firstRow.click();
-      await page.waitForTimeout(1000);
-
-      const url = page.url();
-      const match = url.match(/\/clients\/([a-f0-9-]{36})/);
-      if (match) {
-        clientLinks.push({
-          url: `https://dashboard.boulevard.io/clients/${match[1]}`,
-          name,
-          phone,
-          email,
+          return { name, phone, email, uuid };
         });
+      });
+
+      // Dedup by UUID (primary) or name+phone+email combo (fallback)
+      for (const r of rows) {
+        if (!r.name) continue;
+        const isDupe = r.uuid
+          ? clientEntries.find((c) => c.uuid === r.uuid)
+          : clientEntries.find((c) => c.name === r.name && c.phone === r.phone && c.email === r.email);
+        if (!isDupe) {
+          clientEntries.push(r);
+        }
+      }
+
+      if (clientEntries.length === previousCount) {
+        staleRounds++;
+      } else {
+        staleRounds = 0;
+      }
+      previousCount = clientEntries.length;
+
+      // Scroll the page container to load more rows (virtual scroll)
+      await page.evaluate(() => {
+        const table = document.querySelector("table");
+        let scrollParent = table?.parentElement;
+        while (scrollParent && scrollParent.scrollHeight <= scrollParent.clientHeight) {
+          scrollParent = scrollParent.parentElement;
+        }
+        if (scrollParent) scrollParent.scrollTop += 800;
+        else window.scrollBy(0, 800);
+      });
+      await page.waitForTimeout(1500);
+    }
+
+    const withUuid = clientEntries.filter((c) => c.uuid).length;
+    console.log(`   ✅ Page ${currentPage}: ${clientEntries.length} clients (${withUuid} with UUID)`);
+
+    // Check if there's a next page
+    const nextBtn = page.locator('button[aria-label="Go to next page"]');
+    const isDisabled = await nextBtn.evaluate((el) => el.disabled).catch(() => true);
+
+    if (isDisabled) {
+      console.log(`   ✅ No more pages — collected all ${clientEntries.length} clients`);
+      break;
+    }
+
+    // Click next page and wait for table to reload
+    console.log(`   📄 Going to page ${currentPage + 1}...`);
+    await nextBtn.click();
+    await page.waitForTimeout(3000);
+
+    // Scroll back to top of table for the new page
+    await page.evaluate(() => {
+      const table = document.querySelector("table");
+      let scrollParent = table?.parentElement;
+      while (scrollParent && scrollParent.scrollHeight <= scrollParent.clientHeight) {
+        scrollParent = scrollParent.parentElement;
+      }
+      if (scrollParent) scrollParent.scrollTop = 0;
+      else window.scrollTo(0, 0);
+    });
+    await page.waitForTimeout(1000);
+
+    currentPage++;
+  }
+
+  // Build client URLs — use UUID from fiber, fall back to search if missing
+  const clientLinks = [];
+  const needsSearch = [];
+
+  for (const entry of clientEntries) {
+    if (entry.uuid) {
+      clientLinks.push(`https://dashboard.boulevard.io/clients/${entry.uuid}`);
+    } else {
+      needsSearch.push(entry);
+    }
+  }
+
+  console.log(`   ✅ ${clientLinks.length} clients resolved via React fiber`);
+
+  // Fallback: search for any clients missing UUIDs
+  if (needsSearch.length > 0) {
+    console.log(`   🔍 Searching for ${needsSearch.length} clients without UUIDs...`);
+    for (const { name } of needsSearch) {
+      console.log(`   🔍 Looking up: ${name}`);
+      try {
+        await page.goto("https://dashboard.boulevard.io/clients", { timeout: 30000, waitUntil: "domcontentloaded" });
+      } catch {
+        await page.goto("https://dashboard.boulevard.io/clients", { timeout: 30000, waitUntil: "domcontentloaded" });
+      }
+      await page.waitForTimeout(2000);
+
+      const searchInput = page.locator('input[placeholder*="Search for a name"]');
+      await searchInput.fill(name);
+      await page.waitForTimeout(2000);
+
+      const firstRow = page.locator("tr.MuiTableRow-hover").first();
+      if ((await firstRow.count()) > 0) {
+        await firstRow.click();
+        await page.waitForTimeout(1000);
+        const match = page.url().match(/\/clients\/([a-f0-9-]{36})/);
+        if (match) {
+          clientLinks.push(`https://dashboard.boulevard.io/clients/${match[1]}`);
+        }
       }
     }
   }
 
-  console.log(`   ✅ Found UUIDs for ${clientLinks.length} clients`);
-  return clientLinks.map((c) => c.url);
+  console.log(`   ✅ Total: ${clientLinks.length} client URLs ready`);
+  return clientLinks;
 }
 
 // ============================================
@@ -308,47 +366,30 @@ async function scrapeClient(page, clientUrl) {
   await page.waitForTimeout(1000);
 
   const contactInfo = await page.evaluate(() => {
-    const getText = (label) => {
-      const el = [...document.querySelectorAll("label, span, div")].find(
-        (e) => e.textContent?.trim() === label
-      );
-      if (el) {
-        const next = el.nextElementSibling || el.parentElement?.nextElementSibling;
-        return next?.textContent?.trim() || null;
-      }
-      return null;
+    // Boulevard uses name attributes on inputs: name.first, name.last, email.personal, phone.mobile
+    const getInput = (name) => {
+      const el = document.querySelector(`input[name="${name}"]`);
+      return el?.value?.trim() || "";
     };
 
-    // Try to grab name from the header
-    const nameEl =
-      document.querySelector("h1") ||
-      document.querySelector('[class*="client-name"]');
-    const name = nameEl?.textContent?.trim()?.replace(/📍.*/, "").trim() || "";
+    const firstName = getInput("name.first");
+    const lastName = getInput("name.last");
+    const email = getInput("email.personal");
+    const phone = getInput("phone.mobile");
 
-    // Contact info from the right sidebar
-    const inputs = document.querySelectorAll("input");
-    let firstName = "",
-      lastName = "",
-      email = "",
-      phone = "";
-
-    inputs.forEach((input) => {
-      const label =
-        input.getAttribute("aria-label") ||
-        input.previousElementSibling?.textContent?.trim() ||
-        "";
-      const val = input.value || "";
-      if (label.includes("First")) firstName = val;
-      if (label.includes("Last")) lastName = val;
-      if (label.includes("Email") || input.type === "email") email = val;
-      if (label.includes("Mobile") || input.type === "tel") phone = val;
-    });
-
-    // Fallback: try text content
-    if (!firstName && !lastName && name) {
+    // Fallback: try header for name if inputs are empty
+    if (!firstName && !lastName) {
+      const nameEl = document.querySelector("h1") || document.querySelector('[class*="client-name"]');
+      const name = nameEl?.textContent?.trim()?.replace(/📍.*/, "").trim() || "";
       const parts = name.split(" ");
-      firstName = parts[0] || "";
-      lastName = parts.slice(1).join(" ") || "";
+      return {
+        firstName: parts[0] || "",
+        lastName: parts.slice(1).join(" ") || "",
+        email,
+        phone,
+        clientNotes: null,
+        stats: {},
+      };
     }
 
     // Stats
@@ -461,10 +502,57 @@ async function scrapeClient(page, clientUrl) {
     return { appointments, orders };
   }, BLVD_PROVIDER);
 
-  // Add parsed totalSale to orders
-  const detailedOrders = historyData.orders.map((order) => ({
+  // Click through each order to get gratuity
+  const gratuities = [];
+  const numOrders = historyData.orders.length;
+  for (let i = 0; i < numOrders; i++) {
+    try {
+      // Re-find buttons each iteration (DOM may re-render)
+      const orderBtns = await page.locator('[ng-click*="viewOrder"]').all();
+      if (i >= orderBtns.length) { gratuities.push(null); continue; }
+
+      await orderBtns[i].click();
+      await page.waitForURL("**/sales/order/**", { timeout: 10000 });
+      await page.waitForTimeout(1000);
+
+      const gratuity = await page.evaluate(() => {
+        const lines = document.body.innerText.split("\n").map(l => l.trim()).filter(Boolean);
+        const gIdx = lines.findIndex(l => l.startsWith("Gratuity"));
+        if (gIdx < 0) return null;
+        for (let j = gIdx; j < Math.min(gIdx + 4, lines.length); j++) {
+          const m = lines[j].match(/\$([\d,.]+)/);
+          if (m) return parseFloat(m[1].replace(/,/g, ""));
+        }
+        return null;
+      });
+      gratuities.push(gratuity);
+
+      await page.goBack({ waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(1500);
+      await page.locator('[role="tab"]:has-text("History")').click();
+      await page.waitForTimeout(2000);
+      await page.evaluate(() => window.scrollBy(0, 5000));
+      await page.waitForTimeout(1000);
+    } catch (err) {
+      console.log(`   ⚠️  Gratuity fetch failed for order ${i}: ${err.message}`);
+      gratuities.push(null);
+      // Try to recover back to client History tab
+      try {
+        await page.goto(clientUrl, { waitUntil: "domcontentloaded" });
+        await page.waitForTimeout(1500);
+        await page.locator('[role="tab"]:has-text("History")').click();
+        await page.waitForTimeout(2000);
+        await page.evaluate(() => window.scrollBy(0, 5000));
+        await page.waitForTimeout(1000);
+      } catch {}
+    }
+  }
+
+  // Add parsed totalSale + gratuity to orders
+  const detailedOrders = historyData.orders.map((order, i) => ({
     ...order,
     totalSale: parseFloat(order.totalSaleText?.replace(/[$,]/g, "")) || 0,
+    gratuity: gratuities[i] ?? null,
   }));
 
   return {
