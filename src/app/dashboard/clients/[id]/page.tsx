@@ -2,7 +2,15 @@ import { auth } from "@/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
-import { PlusCircle, ChevronRight, ArrowLeft } from "lucide-react";
+import { PlusCircle, ChevronRight, ArrowLeft, Scissors, FlaskConical, FileStack, Wand2 } from "lucide-react";
+
+function getSessionIcon(formulaNames: string[]) {
+  if (formulaNames.length >= 3) return FileStack;
+  const joined = formulaNames.join(" ").toLowerCase();
+  if (/color|colour|highlight|balayage|toner|gloss|bleach/.test(joined)) return FlaskConical;
+  if (/haircut|cut|trim|blowout|blowdry|blow dry/.test(joined)) return Scissors;
+  return Wand2;
+}
 
 export default async function ClientDetailPage({
   params,
@@ -69,37 +77,37 @@ export default async function ClientDetailPage({
             </Link>
           </div>
         ) : (
-          <div className="space-y-3">
-            {client.sessions.map((s) => (
-              <Link
-                key={s.id}
-                href={`/dashboard/sessions/${s.id}`}
-                className="touch-target block bg-card rounded-xl border border-border px-4 py-4"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">
+          <div className="divide-y divide-border border border-border rounded-xl overflow-hidden bg-card">
+            {client.sessions.map((s) => {
+              const formulaNames = s.formulas.map((f) => f.name);
+              const Icon = getSessionIcon(formulaNames);
+              return (
+                <Link
+                  key={s.id}
+                  href={`/dashboard/sessions/${s.id}`}
+                  className="touch-target flex items-center gap-3 px-4 py-3 hover:bg-muted/10 transition-colors"
+                >
+                  <div className="shrink-0 w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center">
+                    <Icon className="w-4 h-4 text-accent" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">
                       {new Date(s.date).toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
                         year: "numeric",
                       })}
                     </p>
-                    {s.formulas.length > 0 && (
-                      <p className="text-sm text-muted">
-                        {s.formulas.map((f) => f.name).join(", ")}
-                      </p>
-                    )}
-                    {s.notes && (
-                      <p className="text-sm text-muted mt-1 line-clamp-1">
-                        {s.notes}
+                    {formulaNames.length > 0 && (
+                      <p className="text-xs text-muted truncate">
+                        {formulaNames.join(" · ")}
                       </p>
                     )}
                   </div>
-                  <ChevronRight className="w-5 h-5 text-muted" />
-                </div>
-              </Link>
-            ))}
+                  <ChevronRight className="w-4 h-4 text-muted shrink-0" />
+                </Link>
+              );
+            })}
           </div>
         )}
       </main>
