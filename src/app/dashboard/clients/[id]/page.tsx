@@ -95,27 +95,27 @@ export default async function ClientDetailPage({
                     <Icon className="w-4 h-4 text-accent" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2">
-                      <p className="text-sm font-medium">
-                        {new Date(s.date).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </p>
-                      {stylistFirst && (
-                        <p className={`text-xs font-medium truncate ${isMeg ? "text-accent" : "text-muted"}`}>
-                          {stylistFirst}
-                        </p>
-                      )}
-                    </div>
+                    <p className="text-sm font-medium">
+                      {new Date(s.date).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </p>
                     {formulaNames.length > 0 && (
                       <p className="text-xs text-muted truncate">
                         {formulaNames.join(" · ")}
                       </p>
                     )}
                   </div>
-                  <ChevronRight className="w-4 h-4 text-muted shrink-0" />
+                  <div className="flex items-center gap-2 shrink-0">
+                    {stylistFirst && (
+                      <p className={`text-xs font-medium ${isMeg ? "text-accent" : "text-muted"}`}>
+                        {isMeg ? "Me" : stylistFirst}
+                      </p>
+                    )}
+                    <ChevronRight className="w-4 h-4 text-muted" />
+                  </div>
                 </Link>
               );
             })}
