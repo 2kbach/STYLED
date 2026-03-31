@@ -43,7 +43,12 @@ export default async function ClientDetailPage({
 
   // Client since — oldest session
   const clientSince = sessions.length > 0
-    ? new Date(sessions[sessions.length - 1].date).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+    ? (() => {
+        const d = new Date(sessions[sessions.length - 1].date);
+        const month = d.toLocaleDateString("en-US", { month: "short" });
+        const year = String(d.getFullYear()).slice(2);
+        return `${month} '${year}`;
+      })()
     : null;
 
   // Avg revisit in weeks
