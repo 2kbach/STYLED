@@ -55,6 +55,7 @@ v0.5.13
 - **2026-03-31** ✅ Gratuity captured: scraper clicks into each order detail page for Meg's appointments; DB backfill calculated grat = total − service sum for 1,676 sessions — v0.5.10–v0.5.12
 - **2026-03-31** ✅ Session page: payment summary card shows order total + gratuity prominently — v0.5.12
 - **2026-03-31** ✅ Client profile stats: sessions count, avg revisit weeks, client since, service breakdown with counts — v0.5.13
+- **2026-03-31** ✅ Client since formatted as "Mar '26" style, matched to same large bold size as Sessions and Avg wks stats — v0.5.15
 - **2026-03-31** ✅ Nightly cron set on second Mac (2 AM, DAYS_BACK=14) for incremental daily scrapes
 
 ## Case Study
