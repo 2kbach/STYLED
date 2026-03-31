@@ -38,6 +38,38 @@ export default async function ClientDetailPage({
 
   if (!client) notFound();
 
+  const sessions = client.sessions;
+  const totalSessions = sessions.length;
+
+  // Client since — oldest session
+  const clientSince = sessions.length > 0
+    ? new Date(sessions[sessions.length - 1].date).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+    : null;
+
+  // Avg revisit in weeks
+  let avgRevisitWeeks: number | null = null;
+  if (sessions.length >= 2) {
+    const sorted = [...sessions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const gaps: number[] = [];
+    for (let i = 1; i < sorted.length; i++) {
+      const days = (new Date(sorted[i].date).getTime() - new Date(sorted[i - 1].date).getTime()) / (1000 * 60 * 60 * 24);
+      gaps.push(days / 7);
+    }
+    avgRevisitWeeks = Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length * 10) / 10;
+  }
+
+  // Service counts
+  const serviceCounts: Record<string, number> = {};
+  for (const s of sessions) {
+    for (const f of s.formulas) {
+      const name = f.name.trim();
+      if (name) serviceCounts[name] = (serviceCounts[name] || 0) + 1;
+    }
+  }
+  const topServices = Object.entries(serviceCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8);
+
   return (
     <div className="flex-1 flex flex-col pb-20">
       <header className="px-4 py-3 border-b border-border bg-card">
@@ -54,6 +86,41 @@ export default async function ClientDetailPage({
       </header>
 
       <main className="flex-1 px-4 py-4 space-y-4">
+        {totalSessions > 0 && (
+          <div className="space-y-3">
+            {/* Top stats */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-card border border-border rounded-xl px-3 py-3 text-center">
+                <p className="text-2xl font-bold">{totalSessions}</p>
+                <p className="text-xs text-muted mt-0.5">Sessions</p>
+              </div>
+              <div className="bg-card border border-border rounded-xl px-3 py-3 text-center">
+                <p className="text-2xl font-bold">{avgRevisitWeeks ?? "—"}</p>
+                <p className="text-xs text-muted mt-0.5">Avg. wks</p>
+              </div>
+              <div className="bg-card border border-border rounded-xl px-3 py-3 text-center">
+                <p className="text-sm font-bold leading-tight mt-1">{clientSince ?? "—"}</p>
+                <p className="text-xs text-muted mt-0.5">Client since</p>
+              </div>
+            </div>
+
+            {/* Service breakdown */}
+            {topServices.length > 0 && (
+              <div className="bg-card border border-border rounded-xl px-4 py-3">
+                <p className="text-sm text-muted mb-2">Services</p>
+                <div className="flex flex-wrap gap-2">
+                  {topServices.map(([name, count]) => (
+                    <span key={name} className="inline-flex items-center gap-1 bg-muted/10 rounded-full px-3 py-1 text-sm">
+                      <span>{name}</span>
+                      <span className="text-muted font-medium">×{count}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Sessions</h2>
           <Link
