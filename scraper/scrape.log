@@ -1,7 +1,7 @@
 
 🎨 STYLED Boulevard Scraper
    Provider: Meg Auerbach
-   Dry run: true
+   Dry run: false
    Target: https://styled.megandkev.co
 
 🔐 Logging in to Boulevard...
@@ -18,3 +18,18 @@
    ✅ Collected 50 client names from table
    🔍 [1/50] Looking up: Braydin Wright
    🔍 [2/50] Looking up: Chris Cooper
+   🔍 [3/50] Looking up: GIA KOLSKY
+   🔍 [4/50] Looking up: Mitzi Runyan
+   🔍 [5/50] Looking up: Maggie Catalano
+   🔍 [6/50] Looking up: Sandy Espinet
+   🔍 [7/50] Looking up: Marci Kays
+   🔍 [8/50] Looking up: Ashley Tierney
+   🔍 [9/50] Looking up: Betsy Heimann
+   🔍 [10/50] Looking up: Amy Ziering
+   🔍 [11/50] Looking up: Grace Goldsborough
+   🔍 [12/50] Looking up: Samantha Elliott
+   🔍 [13/50] Looking up: Karen Oliver
+   🔍 [14/50] Looking up: Lisa Engel
+   🔍 [15/50] Looking up: Sara Smith
+   🔍 [16/50] Looking up: Alyssa Pizer
+❌ Fatal error: page.waitForTimeout: Target page, context or browser has been closed

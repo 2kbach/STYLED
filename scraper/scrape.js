@@ -47,10 +47,13 @@ async function main() {
     const clientLinks = await getFilteredClients(page);
     console.log(`   Found ${clientLinks.length} clients\n`);
 
-    // Step 3: Scrape each client
+    // Step 3: Scrape each client (limit with MAX_CLIENTS env var)
+    const maxClients = parseInt(process.env.MAX_CLIENTS) || clientLinks.length;
+    const toScrape = clientLinks.slice(0, maxClients);
+    console.log(`   Scraping ${toScrape.length} of ${clientLinks.length} clients\n`);
     const allData = [];
-    for (let i = 0; i < clientLinks.length; i++) {
-      const clientUrl = clientLinks[i];
+    for (let i = 0; i < toScrape.length; i++) {
+      const clientUrl = toScrape[i];
       const clientId = clientUrl.split("/").pop();
       console.log(
         `📋 [${i + 1}/${clientLinks.length}] Scraping client ${clientId}...`
