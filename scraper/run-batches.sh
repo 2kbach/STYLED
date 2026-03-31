@@ -6,7 +6,7 @@ export PATH=/usr/local/bin:$PATH
 cd "$(dirname "$0")"
 
 BATCH_SIZE=10
-TOTAL_CLIENTS=50  # Update when we add pagination for all 156
+TOTAL_CLIENTS=${1:-160}  # Pass as argument or default to 160 (covers 156 + buffer)
 
 echo "🎨 STYLED Boulevard Scraper — Batch Runner"
 echo "   Batch size: $BATCH_SIZE"

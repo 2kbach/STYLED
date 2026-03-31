@@ -23,6 +23,8 @@ model Client {
   id        String   @id @default(cuid())
   name      String
   phone     String?
+  email     String?
+  blvdId    String?
   notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -32,6 +34,7 @@ model Client {
   sessions ServiceSession[]
 
   @@index([userId])
+  @@index([blvdId])
 }
 
 model ServiceSession {
