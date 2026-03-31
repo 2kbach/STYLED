@@ -391,18 +391,14 @@ async function scrapeClient(page, clientUrl) {
         const staffName = staffAvatar?.getAttribute("aria-label") || "";
         const staffInitials = staffAvatar?.getAttribute("initials") || cells[3]?.textContent?.trim() || "";
 
-        // Filter: only keep appointments with this provider
-        const isProvider = staffName.toLowerCase().includes(providerName.split(" ")[0].toLowerCase());
-
-        if (isProvider) {
-          appointments.push({
-            date: cells[0]?.textContent?.trim() || "",
-            location: cells[1]?.textContent?.trim() || "",
-            services: cells[2]?.textContent?.trim() || "",
-            staff: staffName || staffInitials,
-            status: cells[4]?.textContent?.trim() || "",
-          });
-        }
+        appointments.push({
+          date: cells[0]?.textContent?.trim() || "",
+          location: cells[1]?.textContent?.trim() || "",
+          services: cells[2]?.textContent?.trim() || "",
+          staff: staffName || staffInitials,
+          status: cells[4]?.textContent?.trim() || "",
+          isProvider: staffName.toLowerCase().includes(providerName.split(" ")[0].toLowerCase()),
+        });
       });
     }
 
