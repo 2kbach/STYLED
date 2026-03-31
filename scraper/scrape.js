@@ -182,59 +182,95 @@ async function getFilteredClients(page) {
     console.log(`   ✅ Filter shows: ${countMatch[0]}`);
   }
 
-  // Collect all client links by scrolling through the list
-  const clientLinks = new Set();
-  let previousSize = 0;
-  let scrollAttempts = 0;
+  // Collect client names from the filtered table rows, then search each one
+  // We can't click rows (filter resets when panel closes)
+  // Instead: scrape names from table, then use search to find each client's UUID
+  const clientNames = [];
 
-  while (scrollAttempts < 50) {
-    // Grab visible client links
-    const links = await page.$$eval(
-      'a[href*="/clients/"]',
-      (els) =>
-        els
-          .map((el) => el.href)
-          .filter((href) => href.match(/\/clients\/[a-f0-9-]{36}$/))
-    );
+  // Scroll and collect all visible client names
+  let previousCount = 0;
+  let staleRounds = 0;
 
-    links.forEach((l) => clientLinks.add(l));
-
-    if (clientLinks.size === previousSize) {
-      scrollAttempts++;
-      if (scrollAttempts > 3) break;
-    } else {
-      scrollAttempts = 0;
-    }
-
-    previousSize = clientLinks.size;
-
-    // Scroll down to load more
-    await page.evaluate(() => {
-      const list = document.querySelector('[class*="client"]')?.closest('[class*="scroll"]')
-        || document.querySelector('table')?.parentElement
-        || document.scrollingElement;
-      if (list) list.scrollTop += 500;
+  while (staleRounds < 3) {
+    const names = await page.evaluate(() => {
+      const rows = document.querySelectorAll("tr.MuiTableRow-hover");
+      return [...rows].map((row) => {
+        const cells = row.querySelectorAll("td");
+        const nameCell = cells[0]?.textContent?.trim().replace(/^[A-Z]/, (m) => m) || "";
+        // Name has a leading letter avatar (e.g., "C" before "Chris Cooper")
+        // The actual name starts after the single initial letter
+        const name = nameCell.replace(/^[A-Z](?=[A-Z])/, "").trim();
+        const phone = cells[2]?.textContent?.trim() || "";
+        const email = cells[3]?.textContent?.trim() || "";
+        return { name, phone, email };
+      });
     });
-    await page.waitForTimeout(1000);
+
+    // Deduplicate by name
+    for (const n of names) {
+      if (n.name && !clientNames.find((c) => c.name === n.name)) {
+        clientNames.push(n);
+      }
+    }
+
+    if (clientNames.length === previousCount) {
+      staleRounds++;
+    } else {
+      staleRounds = 0;
+    }
+    previousCount = clientNames.length;
+
+    // Scroll down for more
+    await page.evaluate(() => {
+      const container =
+        document.querySelector("table")?.closest('[class*="scroll"]') ||
+        document.querySelector("table")?.parentElement?.parentElement;
+      if (container) container.scrollTop += 800;
+      else window.scrollBy(0, 800);
+    });
+    await page.waitForTimeout(1500);
   }
 
-  // If no links found via href, try clicking each row and grabbing the URL
-  if (clientLinks.size === 0) {
-    console.log("   Trying alternative: scraping client IDs from rows...");
-    const rows = await page.$$('tr[class*="client"], div[class*="client-row"]');
-    for (const row of rows) {
-      await row.click();
-      await page.waitForTimeout(500);
+  console.log(`   ✅ Collected ${clientNames.length} client names from table`);
+
+  // Now find each client's UUID by searching for them individually
+  const clientLinks = [];
+  for (let i = 0; i < clientNames.length; i++) {
+    const { name, phone, email } = clientNames[i];
+    console.log(`   🔍 [${i + 1}/${clientNames.length}] Looking up: ${name}`);
+
+    // Navigate to clients page and search
+    await page.goto("https://dashboard.boulevard.io/clients");
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1500);
+
+    // Use the search bar
+    const searchInput = page.locator('input[placeholder*="Search for a name"]');
+    await searchInput.fill(name);
+    await page.waitForTimeout(2000);
+
+    // Click the first matching row
+    const firstRow = page.locator("tr.MuiTableRow-hover").first();
+    const rowExists = await firstRow.count();
+    if (rowExists > 0) {
+      await firstRow.click();
+      await page.waitForTimeout(1000);
+
       const url = page.url();
-      if (url.includes("/clients/")) {
-        clientLinks.add(url);
+      const match = url.match(/\/clients\/([a-f0-9-]{36})/);
+      if (match) {
+        clientLinks.push({
+          url: `https://dashboard.boulevard.io/clients/${match[1]}`,
+          name,
+          phone,
+          email,
+        });
       }
-      await page.goBack();
-      await page.waitForTimeout(500);
     }
   }
 
-  return [...clientLinks];
+  console.log(`   ✅ Found UUIDs for ${clientLinks.length} clients`);
+  return clientLinks.map((c) => c.url);
 }
 
 // ============================================
