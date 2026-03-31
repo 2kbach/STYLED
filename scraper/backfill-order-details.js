@@ -25,10 +25,14 @@ import { createClient } from "@libsql/client";
 import { chromium } from "playwright";
 import { readFileSync, existsSync } from "fs";
 
-if (existsSync(".env")) {
-  readFileSync(".env", "utf-8").split("\n").filter(l => l && !l.startsWith("#")).forEach(l => {
-    const [k, ...v] = l.split("="); process.env[k.trim()] = v.join("=").trim();
-  });
+// Load .env from current dir and parent dir (scraper/ has BLVD creds, root has DATABASE_URL)
+for (const envFile of [".env", "../.env"]) {
+  if (existsSync(envFile)) {
+    readFileSync(envFile, "utf-8").split("\n").filter(l => l && !l.startsWith("#")).forEach(l => {
+      const [k, ...v] = l.split("=");
+      if (k && !process.env[k.trim()]) process.env[k.trim()] = v.join("=").trim();
+    });
+  }
 }
 
 const db = createClient({
@@ -37,6 +41,7 @@ const db = createClient({
 });
 
 const ORDERS_PER_HOUR = parseInt(process.env.ORDERS_PER_HOUR || "40");
+const MAX_ORDERS = parseInt(process.env.MAX_ORDERS || "0"); // 0 = no limit
 const BLVD_EMAIL = process.env.BLVD_EMAIL;
 const BLVD_PASSWORD = process.env.BLVD_PASSWORD;
 
@@ -122,15 +127,22 @@ async function main() {
 
   // Filter to sessions that haven't had per-stylist data captured yet
   // We'll use a marker "StylistDetail:" in notes to track which are done
-  const todo = sessions.filter(s => !s.notes?.includes("StylistDetail:"));
-  console.log(`⏭  ${sessions.length - todo.length} already processed, ${todo.length} remaining\n`);
+  let todo = sessions.filter(s => !s.notes?.includes("StylistDetail:"));
+  console.log(`⏭  ${sessions.length - todo.length} already processed, ${todo.length} remaining`);
+
+  if (MAX_ORDERS > 0) {
+    todo = todo.slice(0, MAX_ORDERS);
+    console.log(`🔢 Capped at ${MAX_ORDERS} orders for this run\n`);
+  } else {
+    console.log();
+  }
 
   if (todo.length === 0) {
     console.log("✅ All done!");
     return;
   }
 
-  const browser = await chromium.launch({ headless: false });
+  const browser = await chromium.launch({ headless: process.env.HEADLESS === "true" });
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
     userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
