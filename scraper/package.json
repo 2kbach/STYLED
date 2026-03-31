@@ -1,0 +1,13 @@
+{
+  "name": "styled-boulevard-scraper",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "scrape": "node scrape.js",
+    "scrape:dry": "DRY_RUN=true node scrape.js"
+  },
+  "dependencies": {
+    "playwright": "^1.52.0"
+  }
+}
