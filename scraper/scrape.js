@@ -361,71 +361,78 @@ async function scrapeClient(page, clientUrl) {
   await page.locator('[role="tab"]:has-text("History")').click();
   await page.waitForTimeout(2000);
 
-  const historyData = await page.evaluate(() => {
+  const historyData = await page.evaluate((providerName) => {
     const appointments = [];
     const orders = [];
 
-    // Parse appointment history table
-    const apptRows = document.querySelectorAll("table:first-of-type tbody tr");
-    apptRows.forEach((row) => {
-      const cells = row.querySelectorAll("td");
-      if (cells.length >= 4) {
-        appointments.push({
-          date: cells[0]?.textContent?.trim() || "",
-          location: cells[1]?.textContent?.trim() || "",
-          services: cells[2]?.textContent?.trim() || "",
-          staff: cells[3]?.textContent?.trim() || "",
-          status: cells[4]?.textContent?.trim() || "",
-        });
-      }
-    });
-
-    // Parse order history table
+    // Find the Appointment History table (has headers: Date, Location, Services, Staff, Status)
     const tables = document.querySelectorAll("table");
-    if (tables.length > 1) {
-      const orderRows = tables[1].querySelectorAll("tbody tr");
-      orderRows.forEach((row) => {
+    let apptTable = null;
+    let orderTable = null;
+
+    for (const table of tables) {
+      const headers = [...table.querySelectorAll("th")].map(th => th.textContent?.trim()).join(",");
+      if (headers.includes("Services") && headers.includes("Staff")) {
+        apptTable = table;
+      } else if (headers.includes("Order") && headers.includes("Total Sale")) {
+        orderTable = table;
+      }
+    }
+
+    // Parse appointment history
+    if (apptTable) {
+      const rows = apptTable.querySelectorAll("tbody tr");
+      rows.forEach((row) => {
         const cells = row.querySelectorAll("td");
-        if (cells.length >= 4) {
-          // Find the order link
-          const link = row.querySelector('a[href*="/sales/order/"]');
-          orders.push({
+        if (cells.length < 5) return; // Skip separator rows
+
+        // Staff is in an avatar element with aria-label
+        const staffAvatar = cells[3]?.querySelector("[aria-label]");
+        const staffName = staffAvatar?.getAttribute("aria-label") || "";
+        const staffInitials = staffAvatar?.getAttribute("initials") || cells[3]?.textContent?.trim() || "";
+
+        // Filter: only keep appointments with this provider
+        const isProvider = staffName.toLowerCase().includes(providerName.split(" ")[0].toLowerCase());
+
+        if (isProvider) {
+          appointments.push({
             date: cells[0]?.textContent?.trim() || "",
             location: cells[1]?.textContent?.trim() || "",
-            orderNumber: cells[2]?.textContent?.trim() || "",
-            totalSaleText: cells[3]?.textContent?.trim() || "",
+            services: cells[2]?.textContent?.trim() || "",
+            staff: staffName || staffInitials,
             status: cells[4]?.textContent?.trim() || "",
-            refundAmount: cells[5]?.textContent?.trim() || "",
-            orderUrl: link?.href || null,
           });
         }
       });
     }
 
-    return { appointments, orders };
-  });
+    // Parse order history
+    if (orderTable) {
+      const rows = orderTable.querySelectorAll("tbody tr");
+      rows.forEach((row) => {
+        const cells = row.querySelectorAll("td");
+        if (cells.length < 5) return;
 
-  // Scrape order details for each order
-  const detailedOrders = [];
-  for (const order of historyData.orders) {
-    if (order.orderUrl) {
-      try {
-        const orderDetail = await scrapeOrderDetail(page, order.orderUrl);
-        detailedOrders.push({
-          ...order,
-          ...orderDetail,
-          totalSale: parseFloat(order.totalSaleText?.replace(/[$,]/g, "")) || 0,
+        orders.push({
+          date: cells[0]?.textContent?.trim() || "",
+          location: cells[1]?.textContent?.trim() || "",
+          orderNumber: cells[2]?.textContent?.trim() || "",
+          totalSaleText: cells[3]?.textContent?.trim() || "",
+          status: cells[4]?.textContent?.trim() || "",
+          refundAmount: cells[5]?.textContent?.trim() || "",
+          orderUrl: null, // Orders use ng-click, no direct URL
         });
-      } catch (err) {
-        detailedOrders.push({
-          ...order,
-          totalSale: parseFloat(order.totalSaleText?.replace(/[$,]/g, "")) || 0,
-          error: err.message,
-        });
-      }
-      await page.waitForTimeout(500);
+      });
     }
-  }
+
+    return { appointments, orders };
+  }, BLVD_PROVIDER);
+
+  // Add parsed totalSale to orders
+  const detailedOrders = historyData.orders.map((order) => ({
+    ...order,
+    totalSale: parseFloat(order.totalSaleText?.replace(/[$,]/g, "")) || 0,
+  }));
 
   return {
     name: clientName,
