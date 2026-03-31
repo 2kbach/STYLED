@@ -129,6 +129,9 @@ export async function POST(req: Request) {
           },
         });
 
+        // Find matching order for total (needed for both new and existing sessions)
+        const matchingOrder = blvdClient.orders.find((o) => o.date === appt.date);
+
         if (existing) {
           // Backfill gratuity into notes if missing
           if (matchingOrder?.gratuity && existing.notes && !existing.notes.includes("Grat:")) {
@@ -160,9 +163,6 @@ export async function POST(req: Request) {
             components: { create: [] as { product: string; amount: number; unit: string }[] },
           };
         });
-
-        // Find matching order for total
-        const matchingOrder = blvdClient.orders.find((o) => o.date === appt.date);
 
         const sessionNotes = [
           appt.staff ? `Stylist: ${appt.staff}` : null,
