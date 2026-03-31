@@ -3,14 +3,20 @@ import { NextResponse } from "next/server";
 
 const SCRAPER_KEY = process.env.STYLED_SCRAPER_KEY;
 
+interface BlvdAppointment {
+  date: string;
+  location: string;
+  services: string;
+  staff: string;
+  status: string;
+  isProvider: boolean;
+}
+
 interface BlvdOrder {
   date: string;
-  services: { description: string; price: number }[];
-  gratuity: number | null;
-  total: number | null;
-  totalSale: number | null;
-  paymentMethod: string | null;
-  dateTime: string | null;
+  orderNumber: string;
+  totalSaleText: string;
+  totalSale: number;
   status: string;
 }
 
@@ -22,12 +28,11 @@ interface BlvdClient {
   phone: string;
   clientNotes: string | null;
   blvdId: string;
-  appointments: { date: string; services: string; status: string }[];
+  appointments: BlvdAppointment[];
   orders: BlvdOrder[];
 }
 
 export async function POST(req: Request) {
-  // Auth check
   const authHeader = req.headers.get("authorization");
   const token = authHeader?.replace("Bearer ", "");
 
@@ -42,7 +47,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid data" }, { status: 400 });
   }
 
-  // Find the target user (default to first user if not specified)
   let targetUserId = userId;
   if (!targetUserId) {
     const firstUser = await prisma.user.findFirst();
@@ -63,12 +67,9 @@ export async function POST(req: Request) {
         blvdClient.name ||
         "Unknown";
 
-      // Upsert client (match by name + user)
+      // Upsert client
       let client = await prisma.client.findFirst({
-        where: {
-          userId: targetUserId,
-          name: clientName,
-        },
+        where: { userId: targetUserId, name: clientName },
       });
 
       if (!client) {
@@ -77,7 +78,6 @@ export async function POST(req: Request) {
             name: clientName,
             phone: blvdClient.phone || null,
             notes: [
-              blvdClient.clientNotes,
               blvdClient.email ? `Email: ${blvdClient.email}` : null,
               `Boulevard ID: ${blvdClient.blvdId}`,
             ]
@@ -89,21 +89,14 @@ export async function POST(req: Request) {
         });
       }
 
-      // Import orders as sessions
-      for (const order of blvdClient.orders) {
-        // Parse the date
-        let sessionDate: Date;
-        if (order.dateTime) {
-          sessionDate = new Date(order.dateTime);
-        } else if (order.date) {
-          sessionDate = new Date(order.date);
-        } else {
-          continue;
-        }
+      // Import appointments as sessions
+      for (const appt of blvdClient.appointments) {
+        if (!appt.date || appt.status?.toLowerCase() === "cancelled") continue;
 
+        const sessionDate = new Date(appt.date);
         if (isNaN(sessionDate.getTime())) continue;
 
-        // Check for duplicate (same client, same date, within 1 day)
+        // Check for duplicate
         const dayStart = new Date(sessionDate);
         dayStart.setHours(0, 0, 0, 0);
         const dayEnd = new Date(sessionDate);
@@ -112,10 +105,7 @@ export async function POST(req: Request) {
         const existing = await prisma.serviceSession.findFirst({
           where: {
             clientId: client.id,
-            date: {
-              gte: dayStart,
-              lte: dayEnd,
-            },
+            date: { gte: dayStart, lte: dayEnd },
           },
         });
 
@@ -124,48 +114,33 @@ export async function POST(req: Request) {
           continue;
         }
 
-        // Build notes
+        // Parse services string: "Highlights ($450.00)\nWomens Haircut ($225.00)"
+        const serviceLines = appt.services.split("\n").filter(Boolean);
+        const formulas = serviceLines.map((line) => {
+          const priceMatch = line.match(/\(\$([\d,.]+)\)/);
+          const price = priceMatch ? parseFloat(priceMatch[1].replace(",", "")) : 0;
+          const serviceName = line.replace(/\(\$[\d,.]+\)/, "").trim();
+          return {
+            name: serviceName,
+            developer: null,
+            ratio: null,
+            processingMin: null,
+            notes: price > 0 ? `$${price.toFixed(2)}` : null,
+            components: { create: [] as { product: string; amount: number; unit: string }[] },
+          };
+        });
+
+        // Find matching order for total
+        const matchingOrder = blvdClient.orders.find((o) => o.date === appt.date);
+
         const sessionNotes = [
-          order.paymentMethod ? `Payment: ${order.paymentMethod}` : null,
-          order.gratuity ? `Gratuity: $${order.gratuity.toFixed(2)}` : null,
-          order.status ? `Status: ${order.status}` : null,
+          appt.staff ? `Stylist: ${appt.staff}` : null,
+          appt.isProvider ? null : `(Not Meg's appointment)`,
+          matchingOrder ? `Order #${matchingOrder.orderNumber} — Total: ${matchingOrder.totalSaleText}` : null,
           `Imported from Boulevard`,
         ]
           .filter(Boolean)
           .join("\n");
-
-        // Create session with each service as a formula
-        const formulas = order.services.map((svc) => ({
-          name: svc.description.replace(/with Meg Auerbach/gi, "").trim(),
-          developer: null,
-          ratio: null,
-          processingMin: null,
-          notes: `$${svc.price.toFixed(2)}`,
-          components: {
-            create: [] as { product: string; amount: number; unit: string }[],
-          },
-        }));
-
-        // If no parsed services, create one from the appointment data
-        if (formulas.length === 0) {
-          const matchingAppt = blvdClient.appointments.find(
-            (a) => a.date === order.date
-          );
-          if (matchingAppt?.services) {
-            formulas.push({
-              name: matchingAppt.services
-                .replace(/\([\$\d.,]+\)/g, "")
-                .trim(),
-              developer: null,
-              ratio: null,
-              processingMin: null,
-              notes: `$${order.totalSale?.toFixed(2) || "0.00"}`,
-              components: {
-                create: [],
-              },
-            });
-          }
-        }
 
         await prisma.serviceSession.create({
           data: {
@@ -174,7 +149,14 @@ export async function POST(req: Request) {
             clientId: client.id,
             userId: targetUserId,
             formulas: {
-              create: formulas,
+              create: formulas.length > 0 ? formulas : [{
+                name: appt.services.replace(/\(\$[\d,.]+\)/g, "").trim() || "Service",
+                developer: null,
+                ratio: null,
+                processingMin: null,
+                notes: matchingOrder ? matchingOrder.totalSaleText : null,
+                components: { create: [] },
+              }],
             },
           },
         });

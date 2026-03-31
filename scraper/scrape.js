@@ -47,10 +47,11 @@ async function main() {
     const clientLinks = await getFilteredClients(page);
     console.log(`   Found ${clientLinks.length} clients\n`);
 
-    // Step 3: Scrape each client (limit with MAX_CLIENTS env var)
+    // Step 3: Scrape each client (SKIP_CLIENTS + MAX_CLIENTS for batching)
+    const skipClients = parseInt(process.env.SKIP_CLIENTS) || 0;
     const maxClients = parseInt(process.env.MAX_CLIENTS) || clientLinks.length;
-    const toScrape = clientLinks.slice(0, maxClients);
-    console.log(`   Scraping ${toScrape.length} of ${clientLinks.length} clients\n`);
+    const toScrape = clientLinks.slice(skipClients, skipClients + maxClients);
+    console.log(`   Scraping clients ${skipClients + 1}-${skipClients + toScrape.length} of ${clientLinks.length}\n`);
     const allData = [];
     for (let i = 0; i < toScrape.length; i++) {
       const clientUrl = toScrape[i];
@@ -66,11 +67,20 @@ async function main() {
           `   ✅ ${clientData.name} — ${clientData.appointments.length} appointments, ${clientData.orders.length} orders`
         );
 
-        // Save incrementally after each client (don't lose data on crash)
+        // Save incrementally
         writeFileSync(DATA_FILE, JSON.stringify(allData, null, 2));
+
+        // Push this client to STYLED immediately
+        if (!DRY_RUN && STYLED_SCRAPER_KEY) {
+          try {
+            await pushToStyled([clientData]);
+            console.log(`   📤 Pushed to STYLED`);
+          } catch (pushErr) {
+            console.log(`   ⚠️  Push failed: ${pushErr.message}`);
+          }
+        }
       } catch (err) {
         console.log(`   ❌ Failed: ${err.message}`);
-        // Save what we have so far even on error
         writeFileSync(DATA_FILE, JSON.stringify(allData, null, 2));
       }
 
