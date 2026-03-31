@@ -137,13 +137,42 @@ export function SessionDetailClient({
           />
         ) : (
           <>
+            {/* Payment summary */}
+            {(() => {
+              const orderMatch = session.notes?.match(/Order #(\d+) — Total: \$([0-9,.]+)(?:.*?Grat: \$([0-9,.]+))?/);
+              if (!orderMatch) return null;
+              const total = parseFloat(orderMatch[2].replace(/,/g, ""));
+              const grat = orderMatch[3] ? parseFloat(orderMatch[3].replace(/,/g, "")) : null;
+              return (
+                <div className="bg-card border border-border rounded-xl px-4 py-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted">Order #{orderMatch[1]}</p>
+                    <p className="text-xl font-bold">${total.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+                  </div>
+                  {grat && (
+                    <div className="text-right">
+                      <p className="text-sm text-muted">Gratuity</p>
+                      <p className="text-xl font-bold text-accent">+${grat.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Session notes */}
-            {session.notes && (
-              <div className="bg-card border border-border rounded-xl px-4 py-3">
-                <p className="text-sm text-muted mb-1">Session Notes</p>
-                <p className="whitespace-pre-line">{session.notes}</p>
-              </div>
-            )}
+            {(() => {
+              const cleanNotes = session.notes
+                ?.split("\n")
+                .filter(l => !l.startsWith("Order #") && !l.startsWith("Imported from Boulevard"))
+                .join("\n")
+                .trim();
+              return cleanNotes ? (
+                <div className="bg-card border border-border rounded-xl px-4 py-3">
+                  <p className="text-sm text-muted mb-1">Session Notes</p>
+                  <p className="whitespace-pre-line">{cleanNotes}</p>
+                </div>
+              ) : null;
+            })()}
 
             {/* Formulas */}
             {session.formulas.map((formula) => (
