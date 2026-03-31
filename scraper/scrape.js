@@ -62,16 +62,19 @@ async function main() {
         console.log(
           `   ✅ ${clientData.name} — ${clientData.appointments.length} appointments, ${clientData.orders.length} orders`
         );
+
+        // Save incrementally after each client (don't lose data on crash)
+        writeFileSync(DATA_FILE, JSON.stringify(allData, null, 2));
       } catch (err) {
         console.log(`   ❌ Failed: ${err.message}`);
+        // Save what we have so far even on error
+        writeFileSync(DATA_FILE, JSON.stringify(allData, null, 2));
       }
 
       // Be polite — don't hammer the server
       await page.waitForTimeout(1000);
     }
 
-    // Step 4: Save data
-    writeFileSync(DATA_FILE, JSON.stringify(allData, null, 2));
     console.log(`\n💾 Saved ${allData.length} clients to ${DATA_FILE}`);
 
     // Step 5: Push to STYLED (unless dry run)
