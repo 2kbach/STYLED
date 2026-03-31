@@ -81,8 +81,8 @@ export default async function ClientDetailPage({
             {client.sessions.map((s) => {
               const formulaNames = s.formulas.map((f) => f.name);
               const Icon = getSessionIcon(formulaNames);
-              const stylistMatch = s.notes?.match(/^Stylist: (.+)$/m);
-              const stylistFull = stylistMatch?.[1] ?? null;
+              const stylistLine = s.notes?.split("\n").find((l) => l.startsWith("Stylist: "));
+              const stylistFull = stylistLine ? stylistLine.replace("Stylist: ", "").trim() : null;
               const stylistFirst = stylistFull?.split(" ")[0] ?? null;
               const isMeg = stylistFull?.toLowerCase().includes("auerbach") || stylistFull?.toLowerCase().includes("meg");
               return (
