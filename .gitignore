@@ -46,3 +46,4 @@ scraper/*.log
 
 /src/generated/prisma
 .env*.local
+.claude/
