@@ -19,7 +19,13 @@ export default async function Dashboard() {
         take: 1,
       },
     },
-    orderBy: { updatedAt: "desc" },
+    orderBy: { name: "asc" },
+  });
+
+  const sortedClients = clients.sort((a, b) => {
+    const aDate = a.sessions[0]?.date ?? new Date(0);
+    const bDate = b.sessions[0]?.date ?? new Date(0);
+    return bDate.getTime() - aDate.getTime();
   });
 
   return (
@@ -27,7 +33,7 @@ export default async function Dashboard() {
       <DashboardHeader user={session.user} />
 
       <main className="flex-1 px-4 py-4">
-        <ClientList clients={clients} />
+        <ClientList clients={sortedClients} />
       </main>
 
       <BottomNav />
