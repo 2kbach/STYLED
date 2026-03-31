@@ -508,14 +508,21 @@ async function scrapeClient(page, clientUrl) {
     return { appointments, orders };
   }, { providerName: BLVD_PROVIDER, daysBack: DAYS_BACK });
 
-  // Click through each order to get gratuity
-  const gratuities = [];
-  const numOrders = historyData.orders.length;
-  for (let i = 0; i < numOrders; i++) {
+  // Click through orders only for Meg's appointments
+  const megDates = new Set(
+    historyData.appointments.filter((a) => a.isProvider).map((a) => a.date)
+  );
+  const orderIndicesToFetch = historyData.orders
+    .map((o, i) => ({ i, date: o.date }))
+    .filter(({ date }) => megDates.has(date))
+    .map(({ i }) => i);
+
+  const gratuities = new Array(historyData.orders.length).fill(null);
+  for (const i of orderIndicesToFetch) {
     try {
       // Re-find buttons each iteration (DOM may re-render)
       const orderBtns = await page.locator('[ng-click*="viewOrder"]').all();
-      if (i >= orderBtns.length) { gratuities.push(null); continue; }
+      if (i >= orderBtns.length) continue;
 
       await orderBtns[i].click();
       await page.waitForURL("**/sales/order/**", { timeout: 10000 });
@@ -531,7 +538,7 @@ async function scrapeClient(page, clientUrl) {
         }
         return null;
       });
-      gratuities.push(gratuity);
+      gratuities[i] = gratuity;
 
       await page.goBack({ waitUntil: "domcontentloaded" });
       await page.waitForTimeout(1500);
@@ -541,7 +548,6 @@ async function scrapeClient(page, clientUrl) {
       await page.waitForTimeout(1000);
     } catch (err) {
       console.log(`   ⚠️  Gratuity fetch failed for order ${i}: ${err.message}`);
-      gratuities.push(null);
       // Try to recover back to client History tab
       try {
         await page.goto(clientUrl, { waitUntil: "domcontentloaded" });
