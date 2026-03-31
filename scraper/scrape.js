@@ -157,19 +157,17 @@ async function getFilteredClients(page) {
   // Step 4: Type in the search box to find the provider
   console.log(`   Step 4: Searching for ${BLVD_PROVIDER}...`);
   const searchInput = page.locator('input[placeholder*="Search provider"]');
-  await searchInput.fill(BLVD_PROVIDER.split(" ")[0]); // Search by first name
-  await page.waitForTimeout(1000);
+  await searchInput.fill(BLVD_PROVIDER.split(" ")[0]); // Search by first name "Meg"
+  await page.waitForTimeout(1500);
 
-  // Step 5: Click the checkbox next to the provider name
-  console.log("   Step 5: Clicking checkbox...");
-  const checkbox = page.locator(`input[type="checkbox"]`).locator('near(:text("${BLVD_PROVIDER}"))').first();
-  // Fallback: click the text/label itself which should toggle the checkbox
-  await page.locator(`text="${BLVD_PROVIDER}"`).first().click({ timeout: 5000 });
-  await page.waitForTimeout(1000);
+  // Step 5: Click the li[role="menuitem"] that contains the provider name
+  console.log("   Step 5: Clicking provider checkbox...");
+  await page.locator(`li[role="menuitem"]:has-text("${BLVD_PROVIDER.split(" ").pop()}")`).first().click({ timeout: 10000 });
+  await page.waitForTimeout(1500);
 
   // Step 6: Click Apply (should now be enabled)
   console.log("   Step 6: Clicking Apply...");
-  await page.click('button:has-text("Apply")');
+  await page.locator('button:has-text("Apply"):not([disabled])').click({ timeout: 10000 });
   await page.waitForTimeout(3000);
 
   // Check how many clients matched
