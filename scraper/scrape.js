@@ -240,9 +240,13 @@ async function getFilteredClients(page) {
     console.log(`   🔍 [${i + 1}/${clientNames.length}] Looking up: ${name}`);
 
     // Navigate to clients page and search
-    await page.goto("https://dashboard.boulevard.io/clients");
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(1500);
+    try {
+      await page.goto("https://dashboard.boulevard.io/clients", { timeout: 30000, waitUntil: "domcontentloaded" });
+    } catch {
+      // Retry once
+      await page.goto("https://dashboard.boulevard.io/clients", { timeout: 30000, waitUntil: "domcontentloaded" });
+    }
+    await page.waitForTimeout(2000);
 
     // Use the search bar
     const searchInput = page.locator('input[placeholder*="Search for a name"]');
@@ -278,9 +282,13 @@ async function getFilteredClients(page) {
 // ============================================
 async function scrapeClient(page, clientUrl) {
   // Overview tab — contact info
-  await page.goto(clientUrl);
+  try {
+    await page.goto(clientUrl, { timeout: 30000, waitUntil: "domcontentloaded" });
+  } catch {
+    await page.goto(clientUrl, { timeout: 30000, waitUntil: "domcontentloaded" });
+  }
   // Wait for the client profile panel to load (tabs appear)
-  await page.locator('[role="tab"]:has-text("History")').waitFor({ timeout: 15000 });
+  await page.locator('[role="tab"]:has-text("History")').waitFor({ timeout: 20000 });
   await page.waitForTimeout(1000);
 
   const contactInfo = await page.evaluate(() => {
