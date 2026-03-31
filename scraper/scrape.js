@@ -137,23 +137,52 @@ async function login(page) {
 async function getFilteredClients(page) {
   await page.goto("https://dashboard.boulevard.io/clients");
   await page.waitForLoadState("networkidle");
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(3000);
 
-  // Click "Add filter"
-  await page.click('text="Add filter"');
-  await page.waitForTimeout(500);
+  console.log("   Clicking Add filter...");
+  // Click "Add filter" link
+  await page.click('a:has-text("Add filter"), button:has-text("Add filter"), :text("Add filter")');
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: "debug-01-filter-menu.png" });
 
-  // Click "Provider"
-  await page.click('text="Provider"');
-  await page.waitForTimeout(500);
+  console.log("   Clicking Provider...");
+  // Click "Provider" in the filter menu
+  await page.click(':text("Provider") >> visible=true');
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: "debug-02-provider-selected.png" });
 
-  // Select the provider name
-  await page.click(`text="${BLVD_PROVIDER}"`);
-  await page.waitForTimeout(500);
+  console.log(`   Looking for ${BLVD_PROVIDER}...`);
+  // The provider dropdown may show checkboxes — click the label/checkbox
+  // Try multiple selectors
+  const providerFound = await page
+    .locator(`label:has-text("${BLVD_PROVIDER}"), span:has-text("${BLVD_PROVIDER}"), div:has-text("${BLVD_PROVIDER}")`)
+    .first()
+    .click({ timeout: 10000 })
+    .then(() => true)
+    .catch(() => false);
 
-  // Click Apply
-  await page.click('text="Apply"');
-  await page.waitForTimeout(2000);
+  if (!providerFound) {
+    // Try clicking checkbox near the text
+    await page.screenshot({ path: "debug-02b-provider-not-found.png" });
+    console.log("   Trying checkbox approach...");
+    const checkbox = page.locator(`text="${BLVD_PROVIDER}"`).locator("..").locator('input[type="checkbox"]');
+    await checkbox.click({ timeout: 5000 }).catch(() => {});
+  }
+
+  await page.waitForTimeout(1000);
+  await page.screenshot({ path: "debug-03-provider-checked.png" });
+
+  console.log("   Clicking Apply...");
+  await page.click('button:has-text("Apply"), :text("Apply") >> visible=true');
+  await page.waitForTimeout(3000);
+  await page.screenshot({ path: "debug-04-filtered-list.png" });
+
+  // Check how many clients matched
+  const countText = await page.textContent('body');
+  const countMatch = countText?.match(/(\d+)\s*clients?\s*match/i);
+  if (countMatch) {
+    console.log(`   Filter shows: ${countMatch[0]}`);
+  }
 
   // Collect all client links by scrolling through the list
   const clientLinks = new Set();
