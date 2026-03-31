@@ -279,8 +279,9 @@ async function getFilteredClients(page) {
 async function scrapeClient(page, clientUrl) {
   // Overview tab — contact info
   await page.goto(clientUrl);
-  await page.waitForLoadState("networkidle");
-  await page.waitForTimeout(1500);
+  // Wait for the client profile panel to load (tabs appear)
+  await page.locator('[role="tab"]:has-text("History")').waitFor({ timeout: 15000 });
+  await page.waitForTimeout(1000);
 
   const contactInfo = await page.evaluate(() => {
     const getText = (label) => {
@@ -357,7 +358,7 @@ async function scrapeClient(page, clientUrl) {
     "Unknown Client";
 
   // History tab — appointments and orders
-  await page.click('text="HISTORY"');
+  await page.locator('[role="tab"]:has-text("History")').click();
   await page.waitForTimeout(2000);
 
   const historyData = await page.evaluate(() => {

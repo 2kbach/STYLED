@@ -41,7 +41,8 @@ v0.2.0
 - **2026-03-29 20:00** ✅ Session editing, repeat into edit mode, date picker, delete with confirm, cancel on new client — v0.3.4
 - **2026-03-29 20:30** ✅ Search — live search across clients, products, formulas, notes — v0.3.5
 - **2026-03-29 21:00** ✅ Photos moved to bottom, auto-open after new session creation, accent color to black — v0.3.7
-- **2026-03-29 20:00** ✅ Session editing — edit formulas, components, notes on any past session — v0.3.1
+- **2026-03-30 18:00** ✅ Boulevard scraper built + import API — v0.4.0
+- **2026-03-30 18:30** ✅ SSH to always-on Mac working (`ssh styled-mac`) — v0.4.5
 
 ## Case Study
 
@@ -56,6 +57,12 @@ Chose Turso (cloud SQLite) over Postgres for simplicity and edge performance. Pr
 **2026-03-29** — Hit a frustrating auth bug. Google kept returning "invalid_client" for every OAuth client we tried (even across different GCP projects). Turned out `echo` adds a trailing newline (`\n`) when piping values into `vercel env add`, so every Client ID had `%0A` appended. Invisible in dashboards, only visible in the Google redirect URL. Fix: use `printf` instead of `echo` for env vars. Lesson learned for all future Vercel env var setup.
 
 Also discovered NextAuth v5 beta has a known incompatibility with Next.js 16 — the `signIn()` server action throws `UnknownAction`. Workaround: POST a form with CSRF token to the route handler instead.
+
+**2026-03-30** — Built a Boulevard scraper (Playwright headless browser) to pull Megan's client data, appointment history, and order details from `dashboard.boulevard.io`. The salon won't give her API access or data export permissions, so we're scraping the dashboard directly.
+
+Biggest challenge was reverse-engineering Boulevard's MUI/React UI for the filter flow — the "Provider" filter has a nested dropdown with search box and checkboxes, all behind MUI backdrop overlays. Had to inspect the live DOM via Chrome browser tools to get the exact selectors (`li[role="menuitem"]`, search input, Escape to close dropdown before Apply). Also discovered that closing the client profile panel resets the filter, so we collect all names from the table first, then search each one individually to get their UUID.
+
+The scraper runs on the always-on Mac at home. Setting up SSH between the two Macs was its own adventure — the `/32` netmask from a bad static IP config blocked all local traffic (looked like an Eero issue), and the original SSH key had a passphrase preventing automated connections. Created a dedicated `id_ed25519_styled` key without passphrase, and also had to override macOS PAM requiring two-factor auth for SSH.
 
 ## Feature Parking Lot
 - **2026-03-29** — Before/after photo comparison sliders *(from brief)*
