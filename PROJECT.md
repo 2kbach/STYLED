@@ -25,7 +25,7 @@ Stylists currently track formulas on paper cards or in their heads. This leads t
 - **Repo:** github.com/2kbach/STYLED
 
 ## Version
-v0.2.0
+v0.5.13
 
 ## Users
 - Megan (meg.homsey@gmail.com) — primary user, hairstylist
@@ -43,6 +43,19 @@ v0.2.0
 - **2026-03-29 21:00** ✅ Photos moved to bottom, auto-open after new session creation, accent color to black — v0.3.7
 - **2026-03-30 18:00** ✅ Boulevard scraper built + import API — v0.4.0
 - **2026-03-30 18:30** ✅ SSH to always-on Mac working (`ssh styled-mac`) — v0.4.5
+- **2026-03-30 19:00** ✅ Scraper improvements: domcontentloaded, retries, scroll History tab, correct table selectors, staff filter, incremental save — v0.4.6–v0.4.11
+- **2026-03-30 20:00** ✅ Batch scraping: SKIP_CLIENTS offset, push per client, batch runner script — v0.5.0
+- **2026-03-30 20:30** ✅ First 50 clients scraped and imported to production (438 appointments, 368 orders in batch 1) — v0.5.0
+- **2026-03-31 00:00** ✅ Pagination added — scraper now clicks through MUI TablePagination to get all 156 clients (was limited to 50) — v0.5.1
+- **2026-03-31 00:30** ✅ React fiber UUID extraction — pull client UUIDs directly from React component `props.key` instead of searching each name individually (~10 min savings) — v0.5.2
+- **2026-03-31 00:30** ✅ All 156 clients scraped — 2,733 sessions, 3,812 formulas in production — v0.5.2
+- **2026-03-31** ✅ Client schema: added `email` + `blvdId` fields, backfill-contacts script populated all 156 clients with first/last name, phone, email — v0.5.2
+- **2026-03-31** ✅ Client profile redesigned: compact session rows with service icons (Scissors, FlaskConical, FileStack, Wand2), stylist name right-aligned ("Me" for Meg in accent) — v0.5.7
+- **2026-03-31** ✅ Client list ordered by most recent session — v0.5.8
+- **2026-03-31** ✅ Gratuity captured: scraper clicks into each order detail page for Meg's appointments; DB backfill calculated grat = total − service sum for 1,676 sessions — v0.5.10–v0.5.12
+- **2026-03-31** ✅ Session page: payment summary card shows order total + gratuity prominently — v0.5.12
+- **2026-03-31** ✅ Client profile stats: sessions count, avg revisit weeks, client since, service breakdown with counts — v0.5.13
+- **2026-03-31** ✅ Nightly cron set on second Mac (2 AM, DAYS_BACK=14) for incremental daily scrapes
 
 ## Case Study
 
@@ -64,6 +77,20 @@ Biggest challenge was reverse-engineering Boulevard's MUI/React UI for the filte
 
 The scraper runs on the always-on Mac at home. Setting up SSH between the two Macs was its own adventure — the `/32` netmask from a bad static IP config blocked all local traffic (looked like an Eero issue), and the original SSH key had a passphrase preventing automated connections. Created a dedicated `id_ed25519_styled` key without passphrase, and also had to override macOS PAM requiring two-factor auth for SSH.
 
+**2026-03-30** — Ran the first batch scrape: 50 clients imported successfully across 5 batches of 10. Each batch spawns a fresh browser to avoid memory issues. Discovered Boulevard's History tab caps at 100 appointments per client — 15 of Meg's clients hit that ceiling. For now we accept the cap; the older appointment data is less critical since formula tracking is forward-looking.
+
+**2026-03-31** — Hit a wall at 50 clients. Also discovered that Boulevard embeds client UUIDs in React fiber as `props.key` — walking `__reactFiber$` up ~14 levels cuts UUID resolution from 10 minutes to 30 seconds.
+
+Added proper `email` and `blvdId` fields to the Client schema (was cramming everything into notes). Wrote a focused backfill-contacts.js script that only hits the Overview tab for contact data — much faster than re-scraping full history.
+
+Discovered gratuity can be calculated from existing data: `total − sum(service prices)`. No scraping needed. Backfilled 1,676 sessions in seconds. Session pages now show a payment card with total + gratuity. Client profiles show stats (session count, avg revisit, client since, service breakdown).
+
+**2026-03-31** — Hit a wall at 50 clients. The table uses MUI virtual scrolling and only renders ~50 rows. Used Claude Chrome (browser automation MCP) to visually inspect the live Boulevard page and found standard MUI TablePagination at the bottom: "Rows per page: 50 | 1-50 of 156 | < >". Updated the scraper to click through all 4 pages.
+
+Then discovered 154 unique names instead of 156 — two clients (Taryn Shipley, Montana Marks) appeared twice across pages. One "Montana Marks" had a phone number and the other didn't, suggesting duplicate Boulevard accounts. Rather than auto-merging, decided to keep both and build a future "Review Duplicates" page where Meg can choose to merge or keep separate.
+
+Biggest optimization: found that Boulevard embeds client UUIDs in React's internal fiber tree as `props.key` on each table row component. Not visible in the DOM, but accessible via Playwright's `page.evaluate()` by walking `__reactFiber$` → `fiber.return` chain up ~14 levels. This eliminates the need to search each client name individually to get their UUID — cuts the name-to-URL resolution from ~10 minutes (154 individual searches) down to ~30 seconds (just scroll + read fiber).
+
 ## Feature Parking Lot
 - **2026-03-29** — Before/after photo comparison sliders *(from brief)*
 - **2026-03-29** — 3-angle capture protocol (front, crown, nape) *(from brief)*
@@ -75,3 +102,4 @@ The scraper runs on the always-on Mac at home. Setting up SSH between the two Ma
 - **2026-03-29** — Inventory integration with auto-reorder *(from brief)*
 - **2026-03-29** — Search/filter across all sessions and formulas *(Claude)*
 - **2026-03-29** — Duplicate previous session as starting point for new visit *(Claude)*
+- **2026-03-31** — Duplicate client review page: detect potential duplicates (same name/phone/email) from Boulevard import, let user view both side-by-side and choose to merge or keep separate *(Kevin/Claude)*
