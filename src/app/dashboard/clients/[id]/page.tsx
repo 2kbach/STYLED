@@ -82,7 +82,9 @@ export default async function ClientDetailPage({
               const formulaNames = s.formulas.map((f) => f.name);
               const Icon = getSessionIcon(formulaNames);
               const stylistMatch = s.notes?.match(/^Stylist: (.+)$/m);
-              const stylist = stylistMatch?.[1] ?? null;
+              const stylistFull = stylistMatch?.[1] ?? null;
+              const stylistFirst = stylistFull?.split(" ")[0] ?? null;
+              const isMeg = stylistFull?.toLowerCase().includes("auerbach") || stylistFull?.toLowerCase().includes("meg");
               return (
                 <Link
                   key={s.id}
@@ -101,8 +103,10 @@ export default async function ClientDetailPage({
                           year: "numeric",
                         })}
                       </p>
-                      {stylist && (
-                        <p className="text-xs text-muted truncate">{stylist}</p>
+                      {stylistFirst && (
+                        <p className={`text-xs font-medium truncate ${isMeg ? "text-accent" : "text-muted"}`}>
+                          {stylistFirst}
+                        </p>
                       )}
                     </div>
                     {formulaNames.length > 0 && (
