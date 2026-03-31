@@ -81,6 +81,8 @@ export default async function ClientDetailPage({
             {client.sessions.map((s) => {
               const formulaNames = s.formulas.map((f) => f.name);
               const Icon = getSessionIcon(formulaNames);
+              const stylistMatch = s.notes?.match(/^Stylist: (.+)$/m);
+              const stylist = stylistMatch?.[1] ?? null;
               return (
                 <Link
                   key={s.id}
@@ -91,13 +93,18 @@ export default async function ClientDetailPage({
                     <Icon className="w-4 h-4 text-accent" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">
-                      {new Date(s.date).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-sm font-medium">
+                        {new Date(s.date).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </p>
+                      {stylist && (
+                        <p className="text-xs text-muted truncate">{stylist}</p>
+                      )}
+                    </div>
                     {formulaNames.length > 0 && (
                       <p className="text-xs text-muted truncate">
                         {formulaNames.join(" · ")}
