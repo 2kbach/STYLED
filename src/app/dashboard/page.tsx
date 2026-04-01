@@ -5,7 +5,6 @@ import { prisma } from "@/lib/db";
 import { turso } from "@/lib/turso";
 import { BottomNav } from "@/components/bottom-nav";
 import { ClientList } from "@/components/client-list";
-import { DashboardHeader } from "@/components/dashboard-header";
 
 export default async function Dashboard() {
   const session = await auth();
@@ -48,7 +47,6 @@ export default async function Dashboard() {
 
   return (
     <div className="flex-1 flex flex-col pb-20">
-      <DashboardHeader user={session.user} isTestMode={isTestMode} />
       <main className="flex-1 px-4 py-4">
         <ClientList clients={clients} />
       </main>

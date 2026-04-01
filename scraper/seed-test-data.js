@@ -91,6 +91,9 @@ const CLIENTS = [
         { name: "Gloss", developer: "10vol", ratio: "1:2", processingMin: 15, notes: "$45.00", components: COMPS.gloss },
         { name: "Womens Haircut", notes: "$90.00", components: [] },
       ]},
+      { daysAgo: 290, notes: `Stylist: Alex Rivera\nOrder #T003b — Total: $75.00 — Grat: $15.00`, formulas: [
+        { name: "Blow Dry", notes: "$75.00", components: [] },
+      ]},
     ],
   },
   {
@@ -119,6 +122,9 @@ const CLIENTS = [
         { name: "Balayage", developer: "40vol", ratio: "1:2", processingMin: 50, notes: "$350.00", components: COMPS.balayage },
         { name: "Toner", developer: "10vol", ratio: "1:2", processingMin: 20, notes: "$60.00", components: COMPS.toner1018 },
       ]},
+      { daysAgo: 460, notes: `Stylist: Jordan Lee\nOrder #T012b — Total: $90.00 — Grat: $18.00`, formulas: [
+        { name: "Womens Haircut", notes: "$90.00", components: [] },
+      ]},
     ],
   },
   {
@@ -137,6 +143,9 @@ const CLIENTS = [
       { daysAgo: 210, notes: `Stylist: ${MEG}\nOrder #T015 — Total: $270.00 — Grat: $50.00`, formulas: [
         { name: "Partial Highlights", developer: "30vol", ratio: "1:2", processingMin: 40, notes: "$180.00", components: COMPS.partialHighlights },
         { name: "Toner", developer: "10vol", ratio: "1:2", processingMin: 20, notes: "$60.00", components: COMPS.toner1016 },
+      ]},
+      { daysAgo: 295, notes: `Stylist: Carla Avedisian\nOrder #T015b — Total: $75.00 — Grat: $15.00`, formulas: [
+        { name: "Blow Dry", notes: "$75.00", components: [] },
       ]},
     ],
   },
@@ -166,6 +175,9 @@ const CLIENTS = [
         { name: "Single Process Color", developer: "20vol", ratio: "1:1.5", processingMin: 45, notes: "$150.00", components: COMPS.singleProcess7N },
         { name: "Womens Haircut", notes: "$90.00", components: [] },
       ]},
+      { daysAgo: 430, notes: `Stylist: Casey Morgan\nOrder #T023b — Total: $75.00 — Grat: $15.00`, formulas: [
+        { name: "Blow Dry", notes: "$75.00", components: [] },
+      ]},
     ],
   },
   {
@@ -192,6 +204,9 @@ const CLIENTS = [
       { daysAgo: 345, notes: `Stylist: ${MEG}\nOrder #T035 — Total: $405.00 — Grat: $75.00`, formulas: [
         { name: "Balayage", developer: "40vol", ratio: "1:2", processingMin: 50, notes: "$350.00", components: COMPS.balayage },
         { name: "Gloss", developer: "10vol", ratio: "1:2", processingMin: 15, notes: "$45.00", components: COMPS.gloss },
+      ]},
+      { daysAgo: 415, notes: `Stylist: Jordan Lee\nOrder #T035b — Total: $55.00 — Grat: $10.00`, formulas: [
+        { name: "Trim", notes: "$55.00", components: [] },
       ]},
     ],
   },
@@ -222,6 +237,9 @@ const CLIENTS = [
         { name: "Partial Highlights", developer: "30vol", ratio: "1:2", processingMin: 40, notes: "$180.00", components: COMPS.partialHighlights },
         { name: "Toner", developer: "10vol", ratio: "1:2", processingMin: 20, notes: "$60.00", components: COMPS.toner1016 },
       ]},
+      { daysAgo: 470, notes: `Stylist: Alex Rivera\nOrder #T040b — Total: $90.00 — Grat: $18.00`, formulas: [
+        { name: "Womens Haircut", notes: "$90.00", components: [] },
+      ]},
     ],
   },
   {
@@ -245,6 +263,9 @@ const CLIENTS = [
         { name: "Balayage", developer: "40vol", ratio: "1:2", processingMin: 50, notes: "$350.00", components: COMPS.balayage },
         { name: "Toner", developer: "10vol", ratio: "1:2", processingMin: 20, notes: "$60.00", components: COMPS.toner1018 },
       ]},
+      { daysAgo: 360, notes: `Stylist: Carla Avedisian\nOrder #T044b — Total: $75.00 — Grat: $15.00`, formulas: [
+        { name: "Blow Dry", notes: "$75.00", components: [] },
+      ]},
     ],
   },
   {
@@ -263,6 +284,9 @@ const CLIENTS = [
         { name: "Full Highlights", developer: "30vol", ratio: "1:2", processingMin: 45, notes: "$220.00", components: COMPS.fullHighlights },
         { name: "Gloss", developer: "10vol", ratio: "1:2", processingMin: 15, notes: "$45.00", components: COMPS.gloss },
         { name: "Womens Haircut", notes: "$90.00", components: [] },
+      ]},
+      { daysAgo: 260, notes: `Stylist: Casey Morgan\nOrder #T047b — Total: $75.00 — Grat: $15.00`, formulas: [
+        { name: "Blow Dry", notes: "$75.00", components: [] },
       ]},
     ],
   },
@@ -283,6 +307,9 @@ const CLIENTS = [
         { name: "Gloss", developer: "10vol", ratio: "1:2", processingMin: 15, notes: "$45.00", components: COMPS.gloss },
         { name: "Womens Haircut", notes: "$90.00", components: [] },
       ]},
+      { daysAgo: 300, notes: `Stylist: Jordan Lee\nOrder #T050b — Total: $55.00 — Grat: $10.00`, formulas: [
+        { name: "Trim", notes: "$55.00", components: [] },
+      ]},
     ],
   },
   {
@@ -301,6 +328,9 @@ const CLIENTS = [
         { name: "Color Correction", developer: "20vol", ratio: "1:1.5", processingMin: 60, notes: "$400.00", components: COMPS.colorCorrection },
         { name: "Toner", developer: "10vol", ratio: "1:2", processingMin: 20, notes: "$60.00", components: COMPS.toner1016 },
         { name: "Blowout", notes: "$75.00", components: [] },
+      ]},
+      { daysAgo: 275, notes: `Stylist: Alex Rivera\nOrder #T053b — Total: $90.00 — Grat: $18.00`, formulas: [
+        { name: "Womens Haircut", notes: "$90.00", components: [] },
       ]},
     ],
   },
