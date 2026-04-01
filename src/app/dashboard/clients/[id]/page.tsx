@@ -148,21 +148,17 @@ export default async function ClientDetailPage({
 
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Sessions</h2>
-          {!isTestMode && (
-            <Link href={`/dashboard/clients/${client.id}/new-session`} className="touch-target inline-flex items-center gap-1 text-accent font-medium text-sm">
-              <PlusCircle className="w-4 h-4" /> New Session
-            </Link>
-          )}
+          <Link href={`/dashboard/clients/${client.id}/new-session`} className="touch-target inline-flex items-center gap-1 text-accent font-medium text-sm">
+            <PlusCircle className="w-4 h-4" /> New Session
+          </Link>
         </div>
 
         {sessions.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted mb-4">No sessions yet</p>
-            {!isTestMode && (
-              <Link href={`/dashboard/clients/${client.id}/new-session`} className="touch-target inline-flex items-center gap-2 bg-accent text-white font-semibold rounded-xl px-6 py-4 text-lg hover:opacity-90 transition-opacity">
-                <PlusCircle className="w-5 h-5" /> Start first session
-              </Link>
-            )}
+            <Link href={`/dashboard/clients/${client.id}/new-session`} className="touch-target inline-flex items-center gap-2 bg-accent text-white font-semibold rounded-xl px-6 py-4 text-lg hover:opacity-90 transition-opacity">
+              <PlusCircle className="w-5 h-5" /> Start first session
+            </Link>
           </div>
         ) : (
           <div className="divide-y divide-border border border-border rounded-xl overflow-hidden bg-card">

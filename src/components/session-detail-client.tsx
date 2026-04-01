@@ -80,12 +80,13 @@ export function SessionDetailClient({
   }
 
   const refreshPhotos = useCallback(async () => {
-    const res = await fetch(`/api/photos?sessionId=${session.id}`);
+    const testParam = isTestMode ? "&test=1" : "";
+    const res = await fetch(`/api/photos?sessionId=${session.id}${testParam}`);
     if (res.ok) {
       const data = await res.json();
       setPhotos(data);
     }
-  }, [session.id]);
+  }, [session.id, isTestMode]);
 
   function handleSaved() {
     setEditing(false);
@@ -250,6 +251,7 @@ export function SessionDetailClient({
                   sessionId={session.id}
                   existingPhotos={photos}
                   onPhotoAdded={refreshPhotos}
+                  isTestMode={isTestMode}
                 />
               </div>
             ) : (

@@ -34,7 +34,7 @@ const emptyFormula = (): FormulaInput => ({
   components: [emptyComponent()],
 });
 
-export function NewSessionForm({ clientId }: { clientId: string }) {
+export function NewSessionForm({ clientId, isTestMode = false }: { clientId: string; isTestMode?: boolean }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [formulas, setFormulas] = useState<FormulaInput[]>([emptyFormula()]);
@@ -86,7 +86,8 @@ export function NewSessionForm({ clientId }: { clientId: string }) {
     e.preventDefault();
     setLoading(true);
 
-    const res = await fetch("/api/sessions", {
+    const url = isTestMode ? "/api/sessions?test=1" : "/api/sessions";
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -112,8 +113,11 @@ export function NewSessionForm({ clientId }: { clientId: string }) {
     });
 
     if (res.ok) {
-      const session = await res.json();
-      router.push(`/dashboard/sessions/${session.id}?photos=1`);
+      const data = await res.json();
+      const redirect = isTestMode
+        ? `/dashboard/sessions/${data.id}?test=1&photos=1`
+        : `/dashboard/sessions/${data.id}?photos=1`;
+      router.push(redirect);
     } else {
       setLoading(false);
     }

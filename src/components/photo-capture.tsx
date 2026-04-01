@@ -14,6 +14,7 @@ interface PhotoCaptureProps {
   sessionId: string;
   existingPhotos: Photo[];
   onPhotoAdded: () => void;
+  isTestMode?: boolean;
 }
 
 const ANGLES = [
@@ -28,6 +29,7 @@ export function PhotoCapture({
   sessionId,
   existingPhotos,
   onPhotoAdded,
+  isTestMode = false,
 }: PhotoCaptureProps) {
   const [uploading, setUploading] = useState<string | null>(null);
   const [timing, setTiming] = useState("Before");
@@ -49,7 +51,7 @@ export function PhotoCapture({
     formData.append("timing", timing);
 
     try {
-      const res = await fetch("/api/photos", {
+      const res = await fetch(isTestMode ? "/api/photos?test=1" : "/api/photos", {
         method: "POST",
         body: formData,
       });
