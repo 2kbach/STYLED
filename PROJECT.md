@@ -59,7 +59,8 @@ v0.5.16
 - **2026-03-31** ✅ Nightly cron set on second Mac (2 AM, DAYS_BACK=14) for incremental daily scrapes
 - **2026-03-31** ✅ backfill-order-details.js: per-stylist service capture — scrapes each order detail page at human-like pace (30–40/hr), saves `StylistDetail: Service=Stylist | ...` and `OrderUUID: uuid` to session notes — v0.5.16 scraper feature
 - **2026-03-31** ✅ 50-order test backfill completed successfully on second Mac — 47/50 updated (3 not found in BLVD), multi-stylist orders (e.g. Highlights=Lien Scherr, Blow Dry=Carla Avedisian) captured correctly
-- **2026-03-31** ✅ Test Mode built and deployed — avatar menu toggle, amber TEST badge, isolated TestClient/TestServiceSession/TestFormula tables in Turso, 10 seeded fake clients with realistic sessions/formulas, read-only UI (no Edit/Repeat/Add Photos) — v0.5.16
+- **2026-03-31** ✅ Test Mode built and deployed — avatar menu toggle, isolated TestClient/TestServiceSession/TestFormula/TestPhoto tables in Turso, 10 seeded fake clients with realistic sessions/formulas, New Session + Add Photos fully functional in test mode — v0.5.16–v0.5.19
+- **2026-03-31** ✅ Sticky STYLED header on all dashboard pages via shared layout.tsx — v0.5.18
 
 ## Case Study
 
